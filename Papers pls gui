@@ -654,7 +654,7 @@ local function UpdateChat(state)
 		TextChatService.ChatWindowConfiguration.Enabled = state
 		
 		-- 💬 bubble chat (opposite of window)
-		TextChatService.BubbleChatConfiguration.Enabled = not state
+		TextChatService.BubbleChatConfiguration.Enabled = state
 	end)
 end
 
