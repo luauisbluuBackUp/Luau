@@ -1,0 +1,755 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Papers pls cheetos",
+   Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   LoadingTitle = "I hate the abusive guards >:(",
+   LoadingSubtitle = "by bluau",
+   ShowText = "Rayfield", -- for mobile users to unhide Rayfield, change if you'd like
+   Theme = "Ocean", -- Check https://docs.sirius.menu/rayfield/configuration/themes
+
+   ToggleUIKeybind = "K", -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
+
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from emitting warnings when the script has a version mismatch with the interface.
+
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil, -- Create a custom folder for your hub/game
+      FileName = "Big Hub"
+   },
+
+   Discord = {
+      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+      Invite = "noinvitelink", -- The Discord invite code, do not include Discord.gg/. E.g. Discord.gg/ABCD would be ABCD
+      RememberJoins = true -- Set this to false to make them join the Discord every time they load it up
+   },
+
+   KeySystem = true, -- Set this to true to use our key system
+   KeySettings = {
+      Title = "Script its free but...",
+      Subtitle = "does the Computer Union sucks?!",
+      Note = "Key: (Yes dude they suck)", -- Use this to tell the user how to get a key
+      FileName = "Key", -- It is recommended to use something unique, as other scripts using Rayfield may overwrite your key file
+      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"Yes dude they suck"} -- List of keys that the system will accept, can be RAW file links (pastebin, github, etc.) or simple strings ("hello", "key22")
+   }
+})
+
+local Main = Window:CreateTab("Main", 4483362458) -- Title, Image
+
+local Section = Main:CreateSection("ESP everyone!")
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- 🎨 Colors
+local FRIENDLY_COLOR = Color3.fromRGB(0, 255, 0)
+local ENEMY_COLOR = Color3.fromRGB(255, 0, 0)
+local NEUTRAL_COLOR = Color3.fromRGB(255, 255, 0)
+
+-- 🧠 Toggle state
+local ESP_ENABLED = false
+
+-- 🧠 Decide color
+local function getRelationColor(player)
+	if not LocalPlayer.Team or not player.Team then
+		return NEUTRAL_COLOR
+	end
+
+	if player.Team == LocalPlayer.Team then
+		return FRIENDLY_COLOR
+	else
+		return ENEMY_COLOR
+	end
+end
+
+-- ✨ Apply ESP
+local function applyESP(player, character)
+	if not ESP_ENABLED then return end
+	if player == LocalPlayer then return end
+	if not character then return end
+
+	-- Remove old
+	local old = character:FindFirstChild("ESPHighlight")
+	if old then old:Destroy() end
+
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "ESPHighlight"
+	highlight.FillTransparency = 0.5
+	highlight.OutlineTransparency = 0
+
+	local color = getRelationColor(player)
+	highlight.FillColor = color
+	highlight.OutlineColor = color
+
+	highlight.Parent = character
+end
+
+-- ❌ Remove ESP
+local function removeESP(character)
+	if character and character:FindFirstChild("ESPHighlight") then
+		character.ESPHighlight:Destroy()
+	end
+end
+
+-- 🔁 Setup player
+local function setupPlayer(player)
+	if player == LocalPlayer then return end
+
+	player.CharacterAdded:Connect(function(char)
+		task.wait(0.3)
+		applyESP(player, char)
+	end)
+
+	if player.Character then
+		applyESP(player, player.Character)
+	end
+
+	-- Update if THEIR team changes
+	player:GetPropertyChangedSignal("Team"):Connect(function()
+		if player.Character then
+			if ESP_ENABLED then
+				applyESP(player, player.Character)
+			end
+		end
+	end)
+end
+
+-- 🔄 When YOUR team changes
+LocalPlayer:GetPropertyChangedSignal("Team"):Connect(function()
+	if not ESP_ENABLED then return end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character then
+			applyESP(player, player.Character)
+		end
+	end
+end)
+
+-- 🚀 Init players
+for _, player in ipairs(Players:GetPlayers()) do
+	setupPlayer(player)
+end
+
+Players.PlayerAdded:Connect(setupPlayer)
+
+---------------------------------------------------
+-- 🎛️ TOGGLE
+---------------------------------------------------
+
+local Toggle = Main:CreateToggle({
+   Name = "ESP (Team Based)",
+   CurrentValue = false,
+   Flag = "Toggle1",
+
+   Callback = function(Value)
+	   ESP_ENABLED = Value
+
+	   if ESP_ENABLED then
+		   -- 👁️ Enable ESP for everyone
+		   for _, player in ipairs(Players:GetPlayers()) do
+			   if player ~= LocalPlayer and player.Character then
+				   applyESP(player, player.Character)
+			   end
+		   end
+	   else
+		   -- 🌑 Disable ESP (remove all)
+		   for _, player in ipairs(Players:GetPlayers()) do
+			   if player ~= LocalPlayer and player.Character then
+				   removeESP(player.Character)
+			   end
+		   end
+	   end
+   end,
+})
+
+
+local Section = Main:CreateSection("Combat")
+	local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+
+---------------------------------------------------
+-- 🎛️ SETTINGS
+---------------------------------------------------
+
+local LOCK_ENABLED = false
+local MAX_DISTANCE = 120
+local SMOOTHNESS = 0.12
+local FOV_ANGLE = 70
+
+---------------------------------------------------
+-- 👥 ENEMY CHECK (TEAM-BASED SAFE)
+---------------------------------------------------
+
+local function isEnemy(player)
+	if player == LocalPlayer then return false end
+
+	-- if teams don't exist or not assigned, treat as enemy-safe
+	if not player.Team or not LocalPlayer.Team then
+		return true
+	end
+
+	return player.Team ~= LocalPlayer.Team
+end
+
+---------------------------------------------------
+-- 👁️ AIM POINT
+---------------------------------------------------
+
+local function getAimPoint(character)
+	return character:FindFirstChild("Head")
+		or character:FindFirstChild("HumanoidRootPart")
+end
+
+---------------------------------------------------
+-- 🧱 LINE OF SIGHT
+---------------------------------------------------
+
+local function hasLineOfSight(part)
+	local char = LocalPlayer.Character
+	if not char then return true end
+
+	local origin = camera.CFrame.Position
+	local direction = (part.Position - origin).Unit * 500
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = {char}
+
+	local result = Workspace:Raycast(origin, direction, params)
+
+	if not result then return true end
+	return result.Instance:IsDescendantOf(part.Parent)
+end
+
+---------------------------------------------------
+-- 🎯 BEST TARGET (PLAYERS)
+---------------------------------------------------
+
+local function getBestTarget()
+	local best = nil
+	local bestAngle = math.rad(FOV_ANGLE)
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if isEnemy(player)
+			and player.Character
+		then
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			local hum = player.Character:FindFirstChild("Humanoid")
+
+			if hrp and hum and hum.Health > 0 then
+
+				local distance = (hrp.Position - camera.CFrame.Position).Magnitude
+				if distance <= MAX_DISTANCE then
+
+					local dir = (hrp.Position - camera.CFrame.Position).Unit
+					local angle = math.acos(camera.CFrame.LookVector:Dot(dir))
+
+					if angle < bestAngle and hasLineOfSight(hrp) then
+						bestAngle = angle
+						best = player
+					end
+				end
+			end
+		end
+	end
+
+	return best
+end
+
+---------------------------------------------------
+-- 🔄 LOCK LOOP
+---------------------------------------------------
+
+local currentTarget = nil
+
+RunService.RenderStepped:Connect(function()
+	if not LOCK_ENABLED then
+		currentTarget = nil
+		return
+	end
+
+	if not currentTarget
+		or not currentTarget.Character
+		or not currentTarget.Character:FindFirstChild("HumanoidRootPart")
+		or currentTarget.Character.Humanoid.Health <= 0
+	then
+		currentTarget = getBestTarget()
+	end
+
+	if not currentTarget or not currentTarget.Character then return end
+
+	local aimPart = getAimPoint(currentTarget.Character)
+	if not aimPart then return end
+
+	local camPos = camera.CFrame.Position
+	local goal = CFrame.new(camPos, aimPart.Position)
+
+	camera.CFrame = camera.CFrame:Lerp(goal, SMOOTHNESS)
+end)
+
+
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- SETTINGS
+getgenv().BigHeadsEnabled = false
+getgenv().HeadSize = 5
+
+---------------------------------------------------
+-- 🧠 APPLY FUNCTION
+---------------------------------------------------
+
+local function ApplyBigHeads()
+	for _, v in ipairs(Players:GetPlayers()) do
+		if v ~= LocalPlayer and v.Character then
+			local hrp = v.Character:FindFirstChild("HumanoidRootPart")
+
+			if hrp then
+				pcall(function()
+					hrp.Size = Vector3.new(getgenv().HeadSize, getgenv().HeadSize, getgenv().HeadSize)
+					hrp.Transparency = 0.3
+					hrp.Material = Enum.Material.Neon
+					hrp.BrickColor = BrickColor.new("Really blue")
+					hrp.CanCollide = false
+				end)
+			end
+		end
+	end
+end
+
+---------------------------------------------------
+-- 🔁 LOOP
+---------------------------------------------------
+
+task.spawn(function()
+	while true do
+		if getgenv().BigHeadsEnabled then
+			ApplyBigHeads()
+		end
+		task.wait(0.2)
+	end
+end)
+
+local Toggle = Main:CreateToggle({
+	Name = "Lock-On Vision",
+	CurrentValue = false,
+	Flag = "LockOnToggle",
+
+	Callback = function(Value)
+		LOCK_ENABLED = Value
+	end,
+})
+
+local DistanceSlider = Main:CreateSlider({
+	Name = "Max Lock Distance",
+	Range = {100, 2000},
+	Increment = 5,
+	Suffix = "studs",
+	CurrentValue = 600,
+	Flag = "LockDistance",
+
+	Callback = function(Value)
+		MAX_DISTANCE = Value
+	end,
+})
+
+local SmoothSlider = Main:CreateSlider({
+	Name = "Camera Smoothness",
+	Range = {0.02, 0.3},
+	Increment = 0.01,
+	Suffix = "speed",
+	CurrentValue = 0.12,
+	Flag = "LockSmooth",
+
+	Callback = function(Value)
+		SMOOTHNESS = Value
+	end,
+})
+
+
+---------------------------------------------------
+-- 🎛️ TOGGLE (your UI)
+---------------------------------------------------
+
+local Toggle = Main:CreateToggle({
+	Name = "Hitbox expander",
+	CurrentValue = false,
+	Flag = "BigHeadsToggle",
+
+	Callback = function(Value)
+		getgenv().BigHeadsEnabled = Value
+	end,
+})
+
+---------------------------------------------------
+-- 🎚️ SLIDER (your UI)
+---------------------------------------------------
+
+local Slider = Main:CreateSlider({
+	Name = "Hitbox Size",
+	Range = {1, 20},
+	Increment = 1,
+	Suffix = "Size",
+	CurrentValue = 5,
+	Flag = "HeadSizeSlider",
+
+	Callback = function(Value)
+		getgenv().HeadSize = Value
+	end,
+})
+
+
+local Section = Main:CreateSection("Auto farm!")
+--Auto farm down there !!!
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local SavedCFrame = nil
+
+--- 🎛️ SETTINGS
+getgenv().FarmEnabled = false
+getgenv().Speed = 0.35
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+
+local FarmThread = nil
+local FarmToken = 0
+local SavedCFrame = nil
+
+---------------------------------------------------
+-- 🧠 CHARACTER FUNCTION
+---------------------------------------------------
+
+local function GetCharacter()
+	local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	local HRP = Character:FindFirstChild("HumanoidRootPart")
+	local Hum = Character:FindFirstChild("Humanoid")
+	return Character, HRP, Hum
+end
+
+---------------------------------------------------
+-- 📍 TELEPORT
+---------------------------------------------------
+
+local function Tp(NewCFrame)
+	local _, HRP = GetCharacter()
+	if HRP then
+		HRP.CFrame = typeof(NewCFrame) == "Vector3"
+			and CFrame.new(NewCFrame)
+			or NewCFrame
+	end
+end
+
+---------------------------------------------------
+-- 🔧 GET WRENCH
+---------------------------------------------------
+
+local function GetWrench(myToken)
+	local Character, HRP = GetCharacter()
+	local Wrench = workspace.CityBuildings.VehicleShop.MeshPart
+
+	while getgenv().FarmEnabled and FarmToken == myToken and Character and not Character:FindFirstChild("Wrench") do
+		task.wait()
+		Tp(Wrench.Position - Vector3.new(0, 9, 0))
+		fireproximityprompt(Wrench.ProximityPrompt)
+	end
+end
+
+---------------------------------------------------
+-- 🔄 MAIN FARM LOOP
+---------------------------------------------------
+
+local function StartFarm(myToken)
+	local Character, HRP = GetCharacter()
+
+	-- 🧊 no collide loop (safe stop)
+	local SteppedEvent
+	SteppedEvent = RunService.Stepped:Connect(function()
+		if not getgenv().FarmEnabled or FarmToken ~= myToken then
+			if SteppedEvent then SteppedEvent:Disconnect() end
+			return
+		end
+
+		if Character then
+			for _, v in pairs(Character:GetDescendants()) do
+				if v:IsA("BasePart") then
+					v.CanCollide = false
+					v.CanTouch = false
+				end
+			end
+		end
+	end)
+
+	-- 💨 anti-force drift
+	local Velocity = Instance.new("BodyVelocity")
+	Velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	Velocity.Velocity = Vector3.new(0, 0, 0)
+	Velocity.Parent = HRP
+
+	GetWrench(myToken)
+
+	local LastEvent = 0
+
+	for _, v in pairs(workspace.CityBuildings.VehicleShop.CarMake.Vehicle:GetDescendants()) do
+		if v:IsA("ProximityPrompt") and v.ObjectText == "Requiers Wrench" then
+
+			while getgenv().FarmEnabled and FarmToken == myToken do
+				task.wait()
+
+				GetWrench(myToken)
+				Tp(v.Parent.Position - Vector3.new(0, 9, 0))
+
+				if tick() > LastEvent then
+					fireproximityprompt(v)
+					LastEvent = tick() + getgenv().Speed
+				end
+			end
+
+			break
+		end
+	end
+
+	-- cleanup
+	if Velocity then Velocity:Destroy() end
+	if SteppedEvent then SteppedEvent:Disconnect() end
+end
+
+---------------------------------------------------
+-- 🎛️ TOGGLE
+---------------------------------------------------
+
+local Toggle = Main:CreateToggle({
+	Name = "Auto Farm",
+	CurrentValue = false,
+	Flag = "FarmToggle",
+
+	Callback = function(Value)
+		getgenv().FarmEnabled = Value
+
+		if Value then
+			-- 🔒 NEW SESSION TOKEN
+			FarmToken += 1
+			local myToken = FarmToken
+
+			-- 📍 SAVE POSITION
+			local char = LocalPlayer.Character
+			if char and char:FindFirstChild("HumanoidRootPart") then
+				SavedCFrame = char.HumanoidRootPart.CFrame
+			end
+
+			-- 🚀 START FARM
+			if not FarmThread then
+				FarmThread = task.spawn(function()
+					StartFarm(myToken)
+				end)
+			end
+
+		else
+			-- 🛑 STOP EVERYTHING
+			FarmToken += 1 -- instantly kills all loops
+			getgenv().FarmEnabled = false
+
+			task.wait(0.25) -- let threads exit cleanly
+
+			-- 📍 RETURN TO SAVED POSITION
+			local char = LocalPlayer.Character
+			if SavedCFrame and char and char:FindFirstChild("HumanoidRootPart") then
+				char.HumanoidRootPart.CFrame = SavedCFrame
+			end
+
+			FarmThread = nil
+		end
+	end,
+})
+
+
+---------------------------------------------------
+-- 🌊 SPEED SLIDER
+---------------------------------------------------
+
+local Slider = Main:CreateSlider({
+    Name = "Farm Speed",
+    Range = {0.35, 2},
+    Increment = 0.05,
+    Suffix = "sec",
+    CurrentValue = 0.35,
+    Flag = "FarmSpeed",
+
+    Callback = function(Value)
+        getgenv().Speed = Value
+    end,
+})
+
+
+
+
+local Misc = Window:CreateTab("Misc thingz", 4483362458) -- Title, Image
+
+local Section = Misc:CreateSection("idk why I added this")
+
+local Workspace = game:GetService("Workspace")
+
+local PROMPTS_ENABLED = false
+
+---------------------------------------------------
+-- 🧠 FUNCTION: APPLY SETTINGS
+---------------------------------------------------
+
+local function setPromptsInstant(state)
+	for _, v in ipairs(Workspace:GetDescendants()) do
+		if v:IsA("ProximityPrompt") then
+			v.HoldDuration = state and 0 or 0.5 -- restore default-ish feel when off
+		end
+	end
+end
+
+---------------------------------------------------
+-- ⚡ HANDLE NEW PROMPTS
+---------------------------------------------------
+
+Workspace.DescendantAdded:Connect(function(v)
+	if v:IsA("ProximityPrompt") and PROMPTS_ENABLED then
+		v.HoldDuration = 0
+	end
+end)
+
+---------------------------------------------------
+
+---------------------------------------------------
+
+local Toggle = Misc:CreateToggle({
+	Name = "Instant Prompts",
+	CurrentValue = false,
+	Flag = "InstantPrompts",
+
+	Callback = function(Value)
+		PROMPTS_ENABLED = Value
+
+		if PROMPTS_ENABLED then
+			setPromptsInstant(true)
+		else
+			setPromptsInstant(false)
+		end
+	end,
+})
+
+local TextChatService = game:GetService("TextChatService")
+
+local CHAT_ENABLED = true
+
+local function UpdateChat(state)
+	pcall(function()
+		-- 📜 normal chat window
+		TextChatService.ChatWindowConfiguration.Enabled = state
+		
+		-- 💬 bubble chat (opposite of window)
+		TextChatService.BubbleChatConfiguration.Enabled = not state
+	end)
+end
+
+---------------------------------------------------
+-- 🎛️ TOGGLE
+---------------------------------------------------
+
+local Toggle = Misc:CreateToggle({
+	Name = "See chat",
+	CurrentValue = true,
+	Flag = "ChatToggle",
+
+	Callback = function(Value)
+		CHAT_ENABLED = Value
+		UpdateChat(Value)
+	end,
+})
+
+local Button = Misc:CreateButton({
+   Name = "Get rich wear!",
+   Callback = function()
+            
+   local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+local targetPart = workspace:WaitForChild("Rich Clothing") -- change this
+
+-- Start touching
+firetouchinterest(hrp, targetPart, 0)
+
+task.wait(3)
+
+-- Stop touching
+firetouchinterest(hrp, targetPart, 1)
+
+   end,
+})
+
+local Button = Misc:CreateButton({
+   Name = "Load infinite yield",
+   Callback = function()
+   
+loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+            
+   end,
+})
+
+local Tp = Window:CreateTab("Teleport", 4483362458) -- Title, Image
+
+local idk = Tp:CreateSection("Teleport to what ever u want!")
+
+local Locations = {
+	["Convenience Store"] = CFrame.new(-302.078156, 3.75000167, -56.375, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+	["Inside border"] = CFrame.new(-5.57590199, 6.75000143, 3.554919, 7.44462013e-05, -0.258869469, -0.965912402, -1, -7.46250153e-05, -5.71608543e-05, -5.71608543e-05, 0.965912402, -0.258869529),
+    ["Outside border"] = CFrame.new(139.910187, 20, 1.00078201, 2.06232071e-05, 0.866040051, 0.499974549, 0.99999994, -2.06232071e-05, -5.5283308e-06, 5.5283308e-06, 0.499974549, -0.866039991),
+    ["Passport shop"] = CFrame.new(-178.142303, 4.5, -18.2409668, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+    ["city"] = CFrame.new(1415, 8.01670361, 39.5, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+    ["book store"] = CFrame.new(1640.62366, 4.85000038, 115.444366, 0, 0, 1, 0, 1, -0, -1, 0, 0),
+    ["vehicle store"] = CFrame.new(1818.58875, 2.31104064, 91.4028244, 0.673711538, 0.112456799, -0.730387747, -0.560639441, 0.721687436, -0.406018019, 0.481452167, 0.683023214, 0.549256861),
+	["ilegal Store"] = CFrame.new(-211.550003, 3.75, -41, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+}
+
+local SelectedLocation = "Outside border"
+
+local optionList = {}
+
+for name, _ in pairs(Locations) do
+	table.insert(optionList, name)
+end
+
+local Dropdown = Tp:CreateDropdown({
+	Name = "Select Location",
+	Options = optionList,
+	CurrentOption = {"Outside Border"},
+	MultipleOptions = false,
+	Flag = "TeleportDropdown",
+
+	Callback = function(Options)
+		SelectedLocation = Options[1]
+	end,
+})
+
+Tp:CreateButton({
+	Name = "Teleport 2 location",
+	Callback = function()
+		local char = game.Players.LocalPlayer.Character
+		if not char then return end
+
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		if not hrp then return end
+
+		local target = Locations[SelectedLocation]
+		if target then
+			hrp.CFrame = target
+		end
+	end,
+})
