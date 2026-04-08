@@ -1,0 +1,175 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Last dawn cheetos Gui",
+   Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   LoadingTitle = "Rayfield Interface Suite",
+   LoadingSubtitle = "by luauuer",
+   ShowText = "Rayfield", -- for mobile users to unhide Rayfield, change if you'd like
+   Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
+
+   ToggleUIKeybind = "K", -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
+
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from emitting warnings when the script has a version mismatch with the interface.
+
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil, -- Create a custom folder for your hub/game
+      FileName = "Big Hub"
+   },
+
+   Discord = {
+      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+      Invite = "noinvitelink", -- The Discord invite code, do not include Discord.gg/. E.g. Discord.gg/ABCD would be ABCD
+      RememberJoins = true -- Set this to false to make them join the Discord every time they load it up
+   },
+
+   KeySystem = false, -- Set this to true to use our key system
+   KeySettings = {
+      Title = "Untitled",
+      Subtitle = "Key System",
+      Note = "No method of obtaining the key is provided", -- Use this to tell the user how to get a key
+      FileName = "Key", -- It is recommended to use something unique, as other scripts using Rayfield may overwrite your key file
+      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"Hello"} -- List of keys that the system will accept, can be RAW file links (pastebin, github, etc.) or simple strings ("hello", "key22")
+   }
+})
+
+local Main = Window:CreateTab("main", 4483362458) -- Title, Image
+
+local Section = Main:CreateSection("ESP")
+
+local ActiveZombies = workspace:WaitForChild("ActiveZombies")
+
+local EnabledTypes = {}
+local ESPObjects = {}
+
+local Colors = {
+	Brawler = Color3.fromRGB(255, 0, 0),
+	Bloodletter = Color3.fromRGB(150, 0, 0),
+	Bloomer = Color3.fromRGB(255, 100, 0),
+	Shambler = Color3.fromRGB(0, 255, 0),
+	Sniveler = Color3.fromRGB(0, 150, 255),
+	VariantShambler = Color3.fromRGB(200, 0, 255),
+	Butcher = Color3.fromRGB(255, 255, 0)
+}
+
+local function AddESP(zombie)
+	if ESPObjects[zombie] then return end
+	if not EnabledTypes[zombie.Name] then return end
+
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "ZombieESP"
+	highlight.FillColor = Colors[zombie.Name] or Color3.new(1,1,1)
+	highlight.OutlineColor = Color3.fromRGB(255,255,255)
+	highlight.FillTransparency = 0.5
+	highlight.Parent = zombie
+
+	ESPObjects[zombie] = highlight
+end
+
+local function RemoveESP(zombie)
+	if ESPObjects[zombie] then
+		ESPObjects[zombie]:Destroy()
+		ESPObjects[zombie] = nil
+	end
+end
+
+local function RefreshESP()
+	for _, zombie in ipairs(ActiveZombies:GetChildren()) do
+		RemoveESP(zombie)
+		AddESP(zombie)
+	end
+end
+
+ActiveZombies.ChildAdded:Connect(function(zombie)
+	AddESP(zombie)
+end)
+
+ActiveZombies.ChildRemoved:Connect(function(zombie)
+	RemoveESP(zombie)
+end)
+
+local ToggleBrawler = Main:CreateToggle({ 
+	Name = "Brawler ESP",
+	CurrentValue = false,
+	Flag = "BrawlerESP",
+
+	Callback = function(Value)
+		EnabledTypes["Brawler"] = Value
+		RefreshESP()
+	end,
+})
+
+local ToggleBloodletter = Main:CreateToggle({ 
+	Name = "Bloodletter ESP",
+	CurrentValue = false,
+	Flag = "BloodletterESP",
+
+	Callback = function(Value)
+		EnabledTypes["Bloodletter"] = Value
+		RefreshESP()
+	end,
+})
+
+local ToggleBloomer = Main:CreateToggle({ 
+	Name = "Bloomer ESP",
+	CurrentValue = false,
+	Flag = "BloomerESP",
+
+	Callback = function(Value)
+		EnabledTypes["Boomer"] = Value
+		RefreshESP()
+	end,
+})
+
+local ToggleShambler = Main:CreateToggle({ 
+	Name = "Shambler ESP",
+	CurrentValue = false,
+	Flag = "ShamblerESP",
+
+	Callback = function(Value)
+		EnabledTypes["Shambler"] = Value
+		RefreshESP()
+	end,
+})
+
+local ToggleSniveler = Main:CreateToggle({ 
+	Name = "Sniveler ESP",
+	CurrentValue = false,
+	Flag = "SnivelerESP",
+
+	Callback = function(Value)
+		EnabledTypes["Sniveler"] = Value
+		RefreshESP()
+	end,
+})
+
+local ToggleVariantShambler = Main:CreateToggle({ 
+	Name = "VariantShambler ESP",
+	CurrentValue = false,
+	Flag = "VariantShamblerESP",
+
+	Callback = function(Value)
+		EnabledTypes["VariantShambler"] = Value
+		RefreshESP()
+	end,
+})
+
+local ToggleButcher = Main:CreateToggle({ 
+	Name = "Butcher ESP",
+	CurrentValue = false,
+	Flag = "ButcherESP",
+
+	Callback = function(Value)
+		EnabledTypes["Butcher"] = Value
+		RefreshESP()
+	end,
+})
+
+local Section = Main:CreateSection("Combat")
+
+
+
