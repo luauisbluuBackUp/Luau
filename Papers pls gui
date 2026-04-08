@@ -435,19 +435,8 @@ local Button = Misc:CreateButton({
    Name = "Get rich wear!",
    Callback = function()
             
-   local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local hrp = character:WaitForChild("HumanoidRootPart")
+   game:GetService("ReplicatedStorage"):WaitForChild("moneyclothes"):FireServer()
 
-local targetPart = workspace:WaitForChild("Rich Clothing") -- change this
-
--- Start touching
-firetouchinterest(hrp, targetPart, 0)
-
-task.wait(3)
-
--- Stop touching
-firetouchinterest(hrp, targetPart, 1)
 
    end,
 })
@@ -464,10 +453,6 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/
 local Button = Misc:CreateButton({
    Name = "Invisiblity",
    Callback = function()
-   --[[
-	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
-]]
--- follow pls or like
 
 if _G.a then
     local v1, v2, v3 = pairs(_G.a)
