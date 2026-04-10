@@ -696,3 +696,382 @@ end
    end,
 })
 
+local Section = Sugar:CreateSection("Utility")
+
+local Button = Sugar:CreateButton({
+   Name = "Sell sugar",
+   Callback = function()
+                         
+
+    local player = game.Players.LocalPlayer
+
+-- 📍 where you want to go
+         local targetPosition = Vector3.new(1791.16626, 3.90001202, 300.929688, 0.173624337, 0, 0.984811902, 0, 1, 0, -0.984811902, 0, 0.173624337)
+         local function getClosestPrompt()
+	local character = player.Character or player.CharacterAdded:Wait()
+	local hrp = character:WaitForChild("HumanoidRootPart")
+
+	local closestPrompt = nil
+	local shortestDistance = math.huge
+
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("ProximityPrompt") then
+			local part = obj.Parent
+			if part and part:IsA("BasePart") then
+				local distance = (hrp.Position - part.Position).Magnitude
+				
+				if distance < shortestDistance then
+					shortestDistance = distance
+					closestPrompt = obj
+				end
+			end
+		end
+	end
+
+	return closestPrompt
+end
+
+local function Tp(cframe)
+	local character = player.Character or player.CharacterAdded:Wait()
+	local hrp = character:WaitForChild("HumanoidRootPart")
+	hrp.CFrame = cframe
+end
+
+-- 🧠 MAIN LOGIC
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+local originalCFrame = hrp.CFrame -- 📍 save position
+
+-- 🚀 go to target
+Tp(CFrame.new(targetPosition))
+task.wait(0.2)
+
+-- 🎯 find & fire prompt
+local prompt = getClosestPrompt()
+if prompt then
+	fireproximityprompt(prompt)
+end
+
+task.wait(0.2)
+
+-- 🔙 go back to where you were
+Tp(originalCFrame)
+
+	
+     
+    end,
+})
+
+local Button = Sugar:CreateButton({
+   Name = "get Mistro grub fuel",
+   Callback = function()
+                         
+
+    local player = game.Players.LocalPlayer
+
+-- 📍 where you want to go
+         local targetPosition = Vector3.new(-48.6427002, -33.7859535, -241.84787, 0.978718162, 0.000604860834, -0.205208302, 8.96925631e-05, 0.999994278, 0.00337530789, 0.205209166, -0.00332188071, 0.978712499)
+         local function getClosestPrompt()
+	local character = player.Character or player.CharacterAdded:Wait()
+	local hrp = character:WaitForChild("HumanoidRootPart")
+
+	local closestPrompt = nil
+	local shortestDistance = math.huge
+
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("ProximityPrompt") then
+			local part = obj.Parent
+			if part and part:IsA("BasePart") then
+				local distance = (hrp.Position - part.Position).Magnitude
+				
+				if distance < shortestDistance then
+					shortestDistance = distance
+					closestPrompt = obj
+				end
+			end
+		end
+	end
+
+	return closestPrompt
+end
+
+local function Tp(cframe)
+	local character = player.Character or player.CharacterAdded:Wait()
+	local hrp = character:WaitForChild("HumanoidRootPart")
+	hrp.CFrame = cframe
+end
+
+-- 🧠 MAIN LOGIC
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+local originalCFrame = hrp.CFrame -- 📍 save position
+
+-- 🚀 go to target
+Tp(CFrame.new(targetPosition))
+task.wait(0.2)
+
+-- 🎯 find & fire prompt
+local prompt = getClosestPrompt()
+if prompt then
+	fireproximityprompt(prompt)
+end
+
+task.wait(0.2)
+
+-- 🔙 go back to where you were
+Tp(originalCFrame)
+
+	
+     
+    end,
+})
+
+local Button = Sugar:CreateButton({
+   Name = "get Oil barrel",
+   Callback = function()
+                         
+
+    local player = game.Players.LocalPlayer
+
+-- 📍 where you want to go
+         local targetPosition = Vector3.new(-89.8110504, -34.388443, -245.328018, 0.991255581, -0, -0.131955922, 0, 1, -0, 0.131955922, 0, 0.991255581)
+         local function getClosestPrompt()
+	local character = player.Character or player.CharacterAdded:Wait()
+	local hrp = character:WaitForChild("HumanoidRootPart")
+
+	local closestPrompt = nil
+	local shortestDistance = math.huge
+
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("ProximityPrompt") then
+			local part = obj.Parent
+			if part and part:IsA("BasePart") then
+				local distance = (hrp.Position - part.Position).Magnitude
+				
+				if distance < shortestDistance then
+					shortestDistance = distance
+					closestPrompt = obj
+				end
+			end
+		end
+	end
+
+	return closestPrompt
+end
+
+local function Tp(cframe)
+	local character = player.Character or player.CharacterAdded:Wait()
+	local hrp = character:WaitForChild("HumanoidRootPart")
+	hrp.CFrame = cframe
+end
+
+-- 🧠 MAIN LOGIC
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+local originalCFrame = hrp.CFrame -- 📍 save position
+
+-- 🚀 go to target
+Tp(CFrame.new(targetPosition))
+task.wait(0.2)
+
+-- 🎯 find & fire prompt
+local prompt = getClosestPrompt()
+if prompt then
+	fireproximityprompt(prompt)
+end
+
+task.wait(0.2)
+
+-- 🔙 go back to where you were
+Tp(originalCFrame)
+
+	
+     
+    end,
+})
+
+local Button = Sugar:CreateButton({
+   Name = "get Cherry Fanta",
+   Callback = function()
+
+      local player = game.Players.LocalPlayer
+      local character = player.Character or player.CharacterAdded:Wait()
+      local hrp = character:WaitForChild("HumanoidRootPart")
+
+      local targetPosition = Vector3.new(-17.5494385, -27.5896626, -284.532104, 0.996191859, -3.76672824e-06, 0.0871884301, -3.76672824e-06, 1, 8.62397937e-05, -0.0871884301, -8.62397937e-05, 0.996191859)
+
+      local function Tp(pos)
+         hrp.CFrame = CFrame.new(pos)
+      end
+
+      local function getClosestPrompt()
+         local closestPrompt = nil
+         local shortestDistance = math.huge
+
+         for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") then
+               local part = obj.Parent
+               if part and part:IsA("BasePart") then
+                  local distance = (hrp.Position - part.Position).Magnitude
+
+                  if distance < shortestDistance then
+                     shortestDistance = distance
+                     closestPrompt = obj
+                  end
+               end
+            end
+         end
+
+         return closestPrompt
+      end
+
+      local originalCFrame = hrp.CFrame
+
+      -- 🚀 teleport
+      Tp(targetPosition)
+      task.wait(0.2)
+
+      -- 🎯 find prompt
+      local prompt = getClosestPrompt()
+
+      if prompt then
+         for i = 1, 5 do
+            fireproximityprompt(prompt)
+            task.wait(0.2)
+         end
+      end
+
+      task.wait(0.2)
+
+      -- 🔙 return
+      Tp(originalCFrame)
+
+   end,
+})
+
+local Button = Tab:CreateButton({
+   Name = "Get Fanta",
+   Callback = function()
+
+      local player = game.Players.LocalPlayer
+      local character = player.Character or player.CharacterAdded:Wait()
+      local hrp = character:WaitForChild("HumanoidRootPart")
+
+      local targetPosition = Vector3.new(-18.1064301, -27.5896626, -288.543335, 0.996191859, -3.76672824e-06, 0.0871884301, -3.76672824e-06, 1, 8.62397937e-05, -0.0871884301, -8.62397937e-05, 0.996191859)
+
+      local function Tp(pos)
+         hrp.CFrame = CFrame.new(pos)
+      end
+
+      local function getClosestPrompt()
+         local closestPrompt = nil
+         local shortestDistance = math.huge
+
+         for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") then
+               local part = obj.Parent
+               if part and part:IsA("BasePart") then
+                  local distance = (hrp.Position - part.Position).Magnitude
+
+                  if distance < shortestDistance then
+                     shortestDistance = distance
+                     closestPrompt = obj
+                  end
+               end
+            end
+         end
+
+         return closestPrompt
+      end
+
+      local originalCFrame = hrp.CFrame
+
+      -- 🚀 teleport
+      Tp(targetPosition)
+      task.wait(0.2)
+
+      -- 🎯 find prompt
+      local prompt = getClosestPrompt()
+
+      if prompt then
+         for i = 1, 5 do
+            fireproximityprompt(prompt)
+            task.wait(0.2)
+         end
+      end
+
+      task.wait(0.2)
+
+      -- 🔙 return
+      Tp(originalCFrame)
+
+   end,
+})
+
+
+local Shop = Window:CreateTab("Misc Shop", 4483362458) -- Title, Image
+
+local Section = Shop:CreateSection("Ilegal store")
+
+local Button = Shop:CreateButton({
+   Name = "Buy Scoped Mosin Nagant",
+   Callback = function()
+   
+            local args = {
+	"Scoped Mosin Nagant"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
+   end,
+})
+
+local Button = Shop:CreateButton({
+   Name = "Buy Mosin Nagant",
+   Callback = function()
+   
+            local args = {
+	"Mosin Nagant"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
+   end,
+})
+
+local Button = Shop:CreateButton({
+   Name = "Buy The Papasha",
+   Callback = function()
+   
+            local args = {
+	"The Papasha"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
+   end,
+})
+
+local Button = Shop:CreateButton({
+   Name = "Buy Fanta,
+   Callback = function()
+   
+            local args = {
+	"Fanta"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
+   end,
+})
+
+local Button = Shop:CreateButton({
+   Name = "Buy Cherry Fanta",
+   Callback = function()
+   
+            local args = {
+	"Cherry Fanta"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
+   end,
+})
