@@ -165,6 +165,210 @@ local Toggle = Main:CreateToggle({
    end,
 })
 
+local Section = Main:CreateSection("Aimbot")
+
+-- SERVICES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- SETTINGS
+local SMOOTHNESS = 0.18
+local MAX_DIST = 1000
+local TARGET_PART = "Head"
+local FOV_RADIUS = 150
+
+-- STATES
+local AimbotEnabled = false
+local TeamCheck = false
+
+-- =========================
+-- DRAW FOV CIRCLE
+-- =========================
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = true
+FOVCircle.Radius = FOV_RADIUS
+FOVCircle.Thickness = 2
+FOVCircle.Color = Color3.fromRGB(0,255,200)
+FOVCircle.Filled = false
+
+-- =========================
+-- UTILS
+-- =========================
+local function isAlive(character)
+	local hum = character and character:FindFirstChildWhichIsA("Humanoid")
+	return hum and hum.Health > 0
+end
+
+local function getTargetPart(character)
+	for _,name in ipairs({TARGET_PART,"Head","HumanoidRootPart","UpperTorso","Torso"}) do
+		local p = character:FindFirstChild(name)
+		if p and p:IsA("BasePart") then
+			return p
+		end
+	end
+end
+
+-- =========================
+-- WALL CHECK
+-- =========================
+local function isVisible(targetPart, character)
+	local origin = Camera.CFrame.Position
+	local direction = (targetPart.Position - origin)
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	params.FilterDescendantsInstances = {LocalPlayer.Character, character}
+
+	local result = workspace:Raycast(origin, direction, params)
+
+	if not result then return true end
+	return result.Instance:IsDescendantOf(character)
+end
+
+-- =========================
+-- GET TARGET (FOV BASED)
+-- =========================
+local function getClosestPlayer()
+	local closest = nil
+	local shortest = math.huge
+
+	local camPos = Camera.CFrame.Position
+	local screenCenter = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+
+	for _,plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer and plr.Character and isAlive(plr.Character) then
+			
+			if TeamCheck and plr.Team == LocalPlayer.Team then
+				continue
+			end
+
+			local part = getTargetPart(plr.Character)
+			local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+
+			if part and hrp then
+				
+				-- HEIGHT CHECK
+				if hrp.Position.Y < (camPos.Y - 10) then
+					continue
+				end
+
+				-- DIST CHECK
+				local dist3D = (hrp.Position - camPos).Magnitude
+				if dist3D > MAX_DIST then continue end
+
+				-- SCREEN POSITION
+				local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+				if not onScreen then continue end
+
+				local screenPoint = Vector2.new(screenPos.X, screenPos.Y)
+				local dist2D = (screenPoint - screenCenter).Magnitude
+
+				-- FOV CHECK
+				if dist2D <= FOV_RADIUS then
+					
+					-- WALL CHECK
+					if isVisible(part, plr.Character) then
+						if dist2D < shortest then
+							shortest = dist2D
+							closest = plr
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return closest
+end
+
+-- =========================
+-- AIM LOOP
+-- =========================
+RunService.RenderStepped:Connect(function(dt)
+	-- update FOV circle position
+	local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+	FOVCircle.Position = center
+	FOVCircle.Radius = FOV_RADIUS
+
+	if not AimbotEnabled then return end
+
+	local targetPlayer = getClosestPlayer()
+	if not targetPlayer then return end
+
+	local char = targetPlayer.Character
+	if not isAlive(char) then return end
+
+	local part = getTargetPart(char)
+	if not part then return end
+
+	local camPos = Camera.CFrame.Position
+	local desired = CFrame.new(camPos, part.Position)
+
+	local t = 1 - math.exp(-(1 - SMOOTHNESS) * 60 * dt)
+	local newCF = Camera.CFrame:Lerp(desired, t)
+
+	Camera.CFrame = CFrame.new(camPos, (newCF * CFrame.new(0,0,-1)).Position)
+end)
+
+-- =========================
+-- RAYFIELD UI
+-- =========================
+
+Main:CreateToggle({
+	Name = "Aimbot",
+	CurrentValue = false,
+	Flag = "AimbotToggle",
+	Callback = function(Value)
+		AimbotEnabled = Value
+	end,
+})
+
+Main:CreateToggle({
+	Name = "Team Check",
+	CurrentValue = false,
+	Flag = "TeamCheckToggle",
+	Callback = function(Value)
+		TeamCheck = Value
+	end,
+})
+
+Main:CreateSlider({
+	Name = "FOV Radius",
+	Range = {50, 400},
+	Increment = 5,
+	CurrentValue = 150,
+	Flag = "FOVSlider",
+	Callback = function(Value)
+		FOV_RADIUS = Value
+	end,
+})
+
+Main:CreateSlider({
+	Name = "Smoothness",
+	Range = {0, 1},
+	Increment = 0.01,
+	CurrentValue = 0.18,
+	Flag = "SmoothnessSlider",
+	Callback = function(Value)
+		SMOOTHNESS = Value
+	end,
+})
+
+Main:CreateInput({
+	Name = "Target Part",
+	PlaceholderText = "Head",
+	RemoveTextAfterFocusLost = false,
+	Callback = function(Text)
+		if Text ~= "" then
+			TARGET_PART = Text
+		end
+	end,
+})
+
+
 local Section = Main:CreateSection("Auto farm!")
 --Auto farm down there !!!
 local RunService = game:GetService("RunService")
