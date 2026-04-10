@@ -1053,7 +1053,7 @@ game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args)
 })
 
 local Button = Shop:CreateButton({
-   Name = "Buy Fanta,
+   Name = "Buy Fanta",
    Callback = function()
    
             local args = {
