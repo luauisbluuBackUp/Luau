@@ -183,6 +183,7 @@ local FOV_RADIUS = 150
 -- STATES
 local AimbotEnabled = false
 local TeamCheck = false
+local ShowFOV = false
 
 -- =========================
 -- DRAW FOV CIRCLE
@@ -288,12 +289,14 @@ end
 -- AIM LOOP
 -- =========================
 RunService.RenderStepped:Connect(function(dt)
-	-- update FOV circle position
 	local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+
 	FOVCircle.Position = center
 	FOVCircle.Radius = FOV_RADIUS
+	FOVCircle.Visible = ShowFOV
 
 	if not AimbotEnabled then return end
+
 
 	local targetPlayer = getClosestPlayer()
 	if not targetPlayer then return end
@@ -334,6 +337,16 @@ Main:CreateToggle({
 		TeamCheck = Value
 	end,
 })
+
+Tab:CreateToggle({
+	Name = "Show FOV Circle",
+	CurrentValue = false,
+	Flag = "FOVCircleToggle",
+	Callback = function(Value)
+		ShowFOV = Value
+	end,
+})
+
 
 Main:CreateSlider({
 	Name = "FOV Radius",
