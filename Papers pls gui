@@ -1034,6 +1034,43 @@ local Shop = Window:CreateTab("Misc Shop", 4483362458) -- Title, Image
 local Section = Shop:CreateSection("Ilegal store")
 
 local Button = Shop:CreateButton({
+   Name = "Buy illegal passport",
+   Callback = function()
+   
+            local args = {
+	"illegal passport"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
+   end,
+})
+
+local Button = Shop:CreateButton({
+   Name = "Buy illegal Workpass",
+   Callback = function()
+   
+            local args = {
+	"Illegal Workpass"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
+   end,
+})
+
+local Button = Shop:CreateButton({
+   Name = "Buy Grimace shake",
+   Callback = function()
+   
+            local args = {
+	"Grimace shake"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
+
+   end,
+})
+
+local Button = Shop:CreateButton({
    Name = "Buy Scoped Mosin Nagant",
    Callback = function()
    
@@ -1089,6 +1126,45 @@ local Button = Shop:CreateButton({
    
             local args = {
 	"cherry fallanta"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
+   end,
+})
+
+local Section = Shop:CreateSection("Passport Shop")
+
+local Button = Shop:CreateButton({
+   Name = "Buy  legit Passport",
+   Callback = function()
+
+local args = {
+	"Passport"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
+            
+   end,
+})
+
+local Button = Shop:CreateButton({
+   Name = "Buy  legit Permit",
+   Callback = function()
+
+local args = {
+	"Permit"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
+   end,
+})
+
+local Button = Shop:CreateButton({
+   Name = "Buy  legit WorkPass",
+   Callback = function()
+
+local args = {
+	"Workpass"
 }
 game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
 
