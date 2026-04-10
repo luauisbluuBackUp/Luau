@@ -1038,9 +1038,10 @@ local Button = Shop:CreateButton({
    Callback = function()
    
             local args = {
-	"Scoped Mosin Nagant"
+	"scoped mosin"
 }
 game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
 
    end,
 })
@@ -1050,7 +1051,7 @@ local Button = Shop:CreateButton({
    Callback = function()
    
             local args = {
-	"Mosin Nagant"
+	"mosin nagant"
 }
 game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
 
@@ -1061,10 +1062,11 @@ local Button = Shop:CreateButton({
    Name = "Buy The Papasha",
    Callback = function()
    
-            local args = {
-	"The Papasha"
+          local args = {
+	"the papasha"
 }
 game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
+
 
    end,
 })
@@ -1074,7 +1076,7 @@ local Button = Shop:CreateButton({
    Callback = function()
    
             local args = {
-	"Fanta"
+	"fanta"
 }
 game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
 
@@ -1086,7 +1088,7 @@ local Button = Shop:CreateButton({
    Callback = function()
    
             local args = {
-	"Cherry Fanta"
+	"cherry fallanta"
 }
 game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args))
 
