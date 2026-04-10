@@ -952,7 +952,7 @@ local Button = Sugar:CreateButton({
    end,
 })
 
-local Button = Tab:CreateButton({
+local Button = Sugar:CreateButton({
    Name = "Get Fanta",
    Callback = function()
 
