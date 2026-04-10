@@ -894,60 +894,67 @@ Tp(originalCFrame)
 })
 
 local Button = Sugar:CreateButton({
-   Name = "get Cherry Fanta",
+   Name = "Get Cherry Fanta",
    Callback = function()
 
       local player = game.Players.LocalPlayer
-      local character = player.Character or player.CharacterAdded:Wait()
-      local hrp = character:WaitForChild("HumanoidRootPart")
 
-      local targetPosition = Vector3.new(-17.5494385, -27.5896626, -284.532104, 0.996191859, -3.76672824e-06, 0.0871884301, -3.76672824e-06, 1, 8.62397937e-05, -0.0871884301, -8.62397937e-05, 0.996191859)
-
-      local function Tp(pos)
-         hrp.CFrame = CFrame.new(pos)
+      local function getCharacter()
+         local char = player.Character or player.CharacterAdded:Wait()
+         local hrp = char:WaitForChild("HumanoidRootPart")
+         return char, hrp
       end
 
-      local function getClosestPrompt()
-         local closestPrompt = nil
-         local shortestDistance = math.huge
+      local function Tp(hrp, cf)
+         hrp.CFrame = cf
+      end
+
+      local function getClosestPrompt(hrp)
+         local closest, dist = nil, math.huge
 
          for _, obj in pairs(workspace:GetDescendants()) do
             if obj:IsA("ProximityPrompt") then
                local part = obj.Parent
                if part and part:IsA("BasePart") then
-                  local distance = (hrp.Position - part.Position).Magnitude
-
-                  if distance < shortestDistance then
-                     shortestDistance = distance
-                     closestPrompt = obj
+                  local d = (hrp.Position - part.Position).Magnitude
+                  if d < dist then
+                     dist = d
+                     closest = obj
                   end
                end
             end
          end
 
-         return closestPrompt
+         return closest
       end
 
-      local originalCFrame = hrp.CFrame
+      local success, err = pcall(function()
 
-      -- 🚀 teleport
-      Tp(targetPosition)
-      task.wait(0.2)
+         local _, hrp = getCharacter()
+         local original = hrp.CFrame
 
-      -- 🎯 find prompt
-      local prompt = getClosestPrompt()
+         Tp(hrp, CFrame.new(-17.5494385, -27.5896626, -284.532104))
+         task.wait(0.2)
 
-      if prompt then
-         for i = 1, 5 do
-            fireproximityprompt(prompt)
-            task.wait(0.2)
+         local prompt = getClosestPrompt(hrp)
+
+         if prompt then
+            for i = 1, 5 do
+               fireproximityprompt(prompt)
+               task.wait(0.2)
+            end
          end
+
+         task.wait(0.2)
+
+         local _, newHrp = getCharacter()
+         Tp(newHrp, original)
+
+      end)
+
+      if not success then
+         warn("Cherry Fanta error:", err)
       end
-
-      task.wait(0.2)
-
-      -- 🔙 return
-      Tp(originalCFrame)
 
    end,
 })
@@ -957,59 +964,67 @@ local Button = Sugar:CreateButton({
    Callback = function()
 
       local player = game.Players.LocalPlayer
-      local character = player.Character or player.CharacterAdded:Wait()
-      local hrp = character:WaitForChild("HumanoidRootPart")
 
-      local targetPosition = Vector3.new(-18.1064301, -27.5896626, -288.543335, 0.996191859, -3.76672824e-06, 0.0871884301, -3.76672824e-06, 1, 8.62397937e-05, -0.0871884301, -8.62397937e-05, 0.996191859)
-
-      local function Tp(pos)
-         hrp.CFrame = CFrame.new(pos)
+      local function getCharacter()
+         local char = player.Character or player.CharacterAdded:Wait()
+         local hrp = char:WaitForChild("HumanoidRootPart")
+         return char, hrp
       end
 
-      local function getClosestPrompt()
-         local closestPrompt = nil
-         local shortestDistance = math.huge
+      local function Tp(hrp, cf)
+         hrp.CFrame = cf
+      end
+
+      local function getClosestPrompt(hrp)
+         local closest, dist = nil, math.huge
 
          for _, obj in pairs(workspace:GetDescendants()) do
             if obj:IsA("ProximityPrompt") then
                local part = obj.Parent
                if part and part:IsA("BasePart") then
-                  local distance = (hrp.Position - part.Position).Magnitude
-
-                  if distance < shortestDistance then
-                     shortestDistance = distance
-                     closestPrompt = obj
+                  local d = (hrp.Position - part.Position).Magnitude
+                  if d < dist then
+                     dist = d
+                     closest = obj
                   end
                end
             end
          end
 
-         return closestPrompt
+         return closest
       end
 
-      local originalCFrame = hrp.CFrame
+      local success, err = pcall(function()
 
-      -- 🚀 teleport
-      Tp(targetPosition)
-      task.wait(0.2)
+         local _, hrp = getCharacter()
+         local original = hrp.CFrame
 
-      -- 🎯 find prompt
-      local prompt = getClosestPrompt()
+         Tp(hrp, CFrame.new(-18.1064301, -27.5896626, -288.543335))
+         task.wait(0.2)
 
-      if prompt then
-         for i = 1, 5 do
-            fireproximityprompt(prompt)
-            task.wait(0.2)
+         local prompt = getClosestPrompt(hrp)
+
+         if prompt then
+            for i = 1, 5 do
+               fireproximityprompt(prompt)
+               task.wait(0.2)
+            end
          end
+
+         task.wait(0.2)
+
+         local _, newHrp = getCharacter()
+         Tp(newHrp, original)
+
+      end)
+
+      if not success then
+         warn("Fanta error:", err)
       end
-
-      task.wait(0.2)
-
-      -- 🔙 return
-      Tp(originalCFrame)
 
    end,
 })
+
 
 
 local Shop = Window:CreateTab("Misc Shop", 4483362458) -- Title, Image
