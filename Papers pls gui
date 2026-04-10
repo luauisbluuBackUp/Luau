@@ -189,7 +189,7 @@ local ShowFOV = false
 -- DRAW FOV CIRCLE
 -- =========================
 local FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = true
+FOVCircle.Visible = ShowFOV
 FOVCircle.Radius = FOV_RADIUS
 FOVCircle.Thickness = 2
 FOVCircle.Color = Color3.fromRGB(0,255,200)
@@ -204,12 +204,14 @@ local function isAlive(character)
 end
 
 local function getTargetPart(character)
-	for _,name in ipairs({TARGET_PART,"Head","HumanoidRootPart","UpperTorso","Torso"}) do
-		local p = character:FindFirstChild(name)
+	local names = {TARGET_PART,"Head","HumanoidRootPart","UpperTorso","Torso"}
+	for i = 1, #names do
+		local p = character:FindFirstChild(names[i])
 		if p and p:IsA("BasePart") then
 			return p
 		end
 	end
+	return nil
 end
 
 -- =========================
@@ -217,7 +219,7 @@ end
 -- =========================
 local function isVisible(targetPart, character)
 	local origin = Camera.CFrame.Position
-	local direction = (targetPart.Position - origin)
+	local direction = targetPart.Position - origin
 
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Blacklist
@@ -225,12 +227,15 @@ local function isVisible(targetPart, character)
 
 	local result = workspace:Raycast(origin, direction, params)
 
-	if not result then return true end
+	if not result then
+		return true
+	end
+
 	return result.Instance:IsDescendantOf(character)
 end
 
 -- =========================
--- GET TARGET (FOV BASED)
+-- GET TARGET (SAFE VERSION)
 -- =========================
 local function getClosestPlayer()
 	local closest = nil
@@ -240,41 +245,42 @@ local function getClosestPlayer()
 	local screenCenter = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
 
 	for _,plr in ipairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer and plr.Character and isAlive(plr.Character) then
-			
-			if TeamCheck and plr.Team == LocalPlayer.Team then
-				continue
-			end
+		if plr ~= LocalPlayer then
+			local char = plr.Character
 
-			local part = getTargetPart(plr.Character)
-			local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
-
-			if part and hrp then
+			if char and isAlive(char) then
 				
-				-- HEIGHT CHECK
-				if hrp.Position.Y < (camPos.Y - 10) then
-					continue
-				end
+				if not (TeamCheck and plr.Team == LocalPlayer.Team) then
 
-				-- DIST CHECK
-				local dist3D = (hrp.Position - camPos).Magnitude
-				if dist3D > MAX_DIST then continue end
+					local hrp = char:FindFirstChild("HumanoidRootPart")
+					local part = getTargetPart(char)
 
-				-- SCREEN POSITION
-				local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-				if not onScreen then continue end
+					if hrp and part then
+						
+						-- HEIGHT CHECK
+						if hrp.Position.Y >= (camPos.Y - 10) then
+							
+							-- DIST CHECK
+							local dist3D = (hrp.Position - camPos).Magnitude
+							if dist3D <= MAX_DIST then
+								
+								local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
 
-				local screenPoint = Vector2.new(screenPos.X, screenPos.Y)
-				local dist2D = (screenPoint - screenCenter).Magnitude
+								if onScreen then
+									local screenPoint = Vector2.new(screenPos.X, screenPos.Y)
+									local dist2D = (screenPoint - screenCenter).Magnitude
 
-				-- FOV CHECK
-				if dist2D <= FOV_RADIUS then
-					
-					-- WALL CHECK
-					if isVisible(part, plr.Character) then
-						if dist2D < shortest then
-							shortest = dist2D
-							closest = plr
+									if dist2D <= FOV_RADIUS then
+										
+										if isVisible(part, char) then
+											if dist2D < shortest then
+												shortest = dist2D
+												closest = plr
+											end
+										end
+									end
+								end
+							end
 						end
 					end
 				end
@@ -297,7 +303,6 @@ RunService.RenderStepped:Connect(function(dt)
 
 	if not AimbotEnabled then return end
 
-
 	local targetPlayer = getClosestPlayer()
 	if not targetPlayer then return end
 
@@ -317,7 +322,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 
 -- =========================
--- RAYFIELD UI
+-- UI (FIXED)
 -- =========================
 
 Main:CreateToggle({
@@ -338,7 +343,7 @@ Main:CreateToggle({
 	end,
 })
 
-Tab:CreateToggle({
+Main:CreateToggle({
 	Name = "Show FOV Circle",
 	CurrentValue = false,
 	Flag = "FOVCircleToggle",
@@ -346,7 +351,6 @@ Tab:CreateToggle({
 		ShowFOV = Value
 	end,
 })
-
 
 Main:CreateSlider({
 	Name = "FOV Radius",
