@@ -1457,140 +1457,166 @@ local LocalPlayer = Players.LocalPlayer
 
 local FlingTab = Window:CreateTab("Fling", 4483362458)
 
--- VARIABLES
-local selectedPlayer = nil
-local flingSpeed = 5000
-local touchFling = false
-local loopFling = false
-local antiFling = false
+local Section = FlingTab:CreateSection("You maybe have to reset character to make fling work")
 
--- 🧠 GET PLAYERS
-local function getPlayers()
-    local t = {}
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            table.insert(t, p.Name)
-        end
-    end
-    return t
+------------------------------------------------
+-- 🌪 VARIABLES (linked to your fling script)
+------------------------------------------------
+local flingActive = false
+local antiFling = false
+local flingPower = 100
+
+------------------------------------------------
+-- 🧠 GET CHARACTER SAFE
+------------------------------------------------
+local function getChar()
+    local char = player.Character or player.CharacterAdded:Wait()
+    return char, char:WaitForChild("HumanoidRootPart")
 end
 
--- 🎯 DROPDOWN
-local Dropdown = FlingTab:CreateDropdown({
-    Name = "Select Player",
-    Options = getPlayers(),
-    CurrentOption = {},
-    Callback = function(opt)
-        selectedPlayer = Players:FindFirstChild(opt[1])
-    end
-})
-
--- 🔄 AUTO REFRESH
-Players.PlayerAdded:Connect(function()
-    Dropdown:Refresh(getPlayers())
-end)
-
-Players.PlayerRemoving:Connect(function()
-    Dropdown:Refresh(getPlayers())
-end)
-
-FlingTab:CreateButton({
-    Name = "Manual Refresh",
-    Callback = function()
-        Dropdown:Refresh(getPlayers())
-    end
-})
-
--- ⚡ SPEED
-FlingTab:CreateSlider({
-    Name = "Fling Power",
-    Range = {1000, 15000},
-    Increment = 500,
-    CurrentValue = 5000,
-    Callback = function(v)
-        flingSpeed = v
-    end
-})
-
--- 🌪️ TOUCH FLING
+------------------------------------------------
+-- 🌪 TOGGLE: TOUCH FLING (ENABLE ENGINE)
+------------------------------------------------
 FlingTab:CreateToggle({
     Name = "Touch Fling",
     CurrentValue = false,
-    Callback = function(v)
-        touchFling = v
+    Callback = function(Value)
+        flingActive = Value
+
+        local char, hrp = getChar()
+
+        if Value then
+            -- apply spin (same logic as your tool script)
+            local spin = Instance.new("BodyAngularVelocity")
+            spin.Name = "FlingSpin"
+            spin.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+            spin.AngularVelocity = Vector3.new(0, flingPower, 0)
+            spin.P = 1e5
+            spin.Parent = hrp
+
+            -- 💥 touch detection
+            hrp.Touched:Connect(function(hit)
+                if not flingActive then return end
+
+                local otherChar = hit.Parent
+                local otherPlayer = Players:GetPlayerFromCharacter(otherChar)
+                if not otherPlayer or otherPlayer == player then return end
+
+                local otherHRP = otherChar:FindFirstChild("HumanoidRootPart")
+                if not otherHRP then return end
+
+                local dir = (otherHRP.Position - hrp.Position)
+                if dir.Magnitude == 0 then return end
+
+                dir = dir.Unit
+
+                otherHRP.AssemblyLinearVelocity =
+                    (dir * flingPower * 60) + Vector3.new(0, flingPower * 2, 0)
+            end)
+
+        else
+            -- cleanup
+            for _, v in pairs(hrp:GetChildren()) do
+                if v:IsA("BodyAngularVelocity") or v.Name == "FlingSpin" then
+                    v:Destroy()
+                end
+            end
+        end
     end
 })
 
--- 🔁 LOOP FLING
+------------------------------------------------
+-- ⚡ POWER SLIDER
+------------------------------------------------
+FlingTab:CreateSlider({
+    Name = "Fling Power",
+    Range = {50, 500},
+    Increment = 10,
+    CurrentValue = 100,
+    Callback = function(Value)
+        flingPower = Value
+    end
+})
+
+------------------------------------------------
+-- 🔁 LOOP FLING (AUTO PUSH NEARBY TARGETS)
+------------------------------------------------
+local loopFling = false
+
 FlingTab:CreateToggle({
-    Name = "Loop Fling Selected",
+    Name = "Loop Fling Nearby",
     CurrentValue = false,
-    Callback = function(v)
-        loopFling = v
+    Callback = function(Value)
+        loopFling = Value
+
+        if Value then
+            task.spawn(function()
+                while loopFling do
+                    local char, hrp = getChar()
+
+                    for _, p in pairs(Players:GetPlayers()) do
+                        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                            local target = p.Character.HumanoidRootPart
+
+                            local dist = (target.Position - hrp.Position).Magnitude
+                            if dist < 10 then
+                                local dir = (target.Position - hrp.Position).Unit
+                                target.AssemblyLinearVelocity =
+                                    (dir * flingPower * 40) + Vector3.new(0, flingPower, 0)
+                            end
+                        end
+                    end
+
+                    task.wait(0.2)
+                end
+            end)
+        end
     end
 })
 
--- 🛡️ ANTI FLING (SMART)
+------------------------------------------------
+-- 🛡 ANTI FLING (SAFE VERSION)
+------------------------------------------------
 FlingTab:CreateToggle({
-    Name = "Smart Anti Fling",
+    Name = "Anti Fling",
     CurrentValue = false,
-    Callback = function(v)
-        antiFling = v
+    Callback = function(Value)
+        antiFling = Value
+
+        if Value then
+            task.spawn(function()
+                while antiFling do
+                    local char, hrp = getChar()
+
+                    if hrp.AssemblyLinearVelocity.Magnitude > 120 then
+                        hrp.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                        hrp.AssemblyAngularVelocity = Vector3.new(0,0,0)
+                    end
+
+                    task.wait(0.1)
+                end
+            end)
+        end
     end
 })
 
--- 💥 FLING ALL
+------------------------------------------------
+-- 💥 FLING ALL BUTTON
+------------------------------------------------
 FlingTab:CreateButton({
     Name = "Fling All",
     Callback = function()
-        for _, target in pairs(Players:GetPlayers()) do
-            if target ~= LocalPlayer and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                local myHRP = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
-                local targetHRP = target.Character.HumanoidRootPart
+        local char, hrp = getChar()
 
-                for i = 1, 25 do
-                    myHRP.CFrame = targetHRP.CFrame
-                    myHRP.RotVelocity = Vector3.new(flingSpeed, flingSpeed, flingSpeed)
-                    task.wait()
-                end
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local target = p.Character.HumanoidRootPart
+
+                local dir = (target.Position - hrp.Position).Unit
+
+                target.AssemblyLinearVelocity =
+                    (dir * flingPower * 60) + Vector3.new(0, flingPower * 2, 0)
             end
         end
     end
 })
-
--- 🧠 MAIN ENGINE (ONE LOOP TO RULE THEM ALL)
-task.spawn(function()
-    while true do
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local hrp = char.HumanoidRootPart
-
-            -- 🌪️ TOUCH FLING
-            if touchFling then
-                hrp.RotVelocity = Vector3.new(flingSpeed, flingSpeed, flingSpeed)
-            end
-
-            -- 🎯 LOOP FLING TARGET
-            if loopFling and selectedPlayer 
-            and selectedPlayer.Character 
-            and selectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
-
-                local targetHRP = selectedPlayer.Character.HumanoidRootPart
-                hrp.CFrame = targetHRP.CFrame
-                hrp.RotVelocity = Vector3.new(flingSpeed, flingSpeed, flingSpeed)
-            end
-
-            -- 🛡️ SMART ANTI-FLING
-            if antiFling then
-                if not touchFling and not loopFling then
-                    if hrp.Velocity.Magnitude > 100 or hrp.RotVelocity.Magnitude > 100 then
-                        hrp.Velocity = Vector3.new(0,0,0)
-                        hrp.RotVelocity = Vector3.new(0,0,0)
-                    end
-                end
-            end
-        end
-
-        task.wait()
-    end
-end)
