@@ -1451,3 +1451,146 @@ game:GetService("ReplicatedStorage"):WaitForChild("buy"):FireServer(unpack(args)
 
    end,
 })
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local FlingTab = Window:CreateTab("Fling", 4483362458)
+
+-- VARIABLES
+local selectedPlayer = nil
+local flingSpeed = 5000
+local touchFling = false
+local loopFling = false
+local antiFling = false
+
+-- 🧠 GET PLAYERS
+local function getPlayers()
+    local t = {}
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            table.insert(t, p.Name)
+        end
+    end
+    return t
+end
+
+-- 🎯 DROPDOWN
+local Dropdown = FlingTab:CreateDropdown({
+    Name = "Select Player",
+    Options = getPlayers(),
+    CurrentOption = {},
+    Callback = function(opt)
+        selectedPlayer = Players:FindFirstChild(opt[1])
+    end
+})
+
+-- 🔄 AUTO REFRESH
+Players.PlayerAdded:Connect(function()
+    Dropdown:Refresh(getPlayers())
+end)
+
+Players.PlayerRemoving:Connect(function()
+    Dropdown:Refresh(getPlayers())
+end)
+
+FlingTab:CreateButton({
+    Name = "Manual Refresh",
+    Callback = function()
+        Dropdown:Refresh(getPlayers())
+    end
+})
+
+-- ⚡ SPEED
+FlingTab:CreateSlider({
+    Name = "Fling Power",
+    Range = {1000, 15000},
+    Increment = 500,
+    CurrentValue = 5000,
+    Callback = function(v)
+        flingSpeed = v
+    end
+})
+
+-- 🌪️ TOUCH FLING
+FlingTab:CreateToggle({
+    Name = "Touch Fling",
+    CurrentValue = false,
+    Callback = function(v)
+        touchFling = v
+    end
+})
+
+-- 🔁 LOOP FLING
+FlingTab:CreateToggle({
+    Name = "Loop Fling Selected",
+    CurrentValue = false,
+    Callback = function(v)
+        loopFling = v
+    end
+})
+
+-- 🛡️ ANTI FLING (SMART)
+FlingTab:CreateToggle({
+    Name = "Smart Anti Fling",
+    CurrentValue = false,
+    Callback = function(v)
+        antiFling = v
+    end
+})
+
+-- 💥 FLING ALL
+FlingTab:CreateButton({
+    Name = "Fling All",
+    Callback = function()
+        for _, target in pairs(Players:GetPlayers()) do
+            if target ~= LocalPlayer and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                local myHRP = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+                local targetHRP = target.Character.HumanoidRootPart
+
+                for i = 1, 25 do
+                    myHRP.CFrame = targetHRP.CFrame
+                    myHRP.RotVelocity = Vector3.new(flingSpeed, flingSpeed, flingSpeed)
+                    task.wait()
+                end
+            end
+        end
+    end
+})
+
+-- 🧠 MAIN ENGINE (ONE LOOP TO RULE THEM ALL)
+task.spawn(function()
+    while true do
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
+
+            -- 🌪️ TOUCH FLING
+            if touchFling then
+                hrp.RotVelocity = Vector3.new(flingSpeed, flingSpeed, flingSpeed)
+            end
+
+            -- 🎯 LOOP FLING TARGET
+            if loopFling and selectedPlayer 
+            and selectedPlayer.Character 
+            and selectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+
+                local targetHRP = selectedPlayer.Character.HumanoidRootPart
+                hrp.CFrame = targetHRP.CFrame
+                hrp.RotVelocity = Vector3.new(flingSpeed, flingSpeed, flingSpeed)
+            end
+
+            -- 🛡️ SMART ANTI-FLING
+            if antiFling then
+                if not touchFling and not loopFling then
+                    if hrp.Velocity.Magnitude > 100 or hrp.RotVelocity.Magnitude > 100 then
+                        hrp.Velocity = Vector3.new(0,0,0)
+                        hrp.RotVelocity = Vector3.new(0,0,0)
+                    end
+                end
+            end
+        end
+
+        task.wait()
+    end
+end)
