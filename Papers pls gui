@@ -847,6 +847,66 @@ _G.a = v31
    end,
 })
 
+local Section = Misc:CreateSection("Bypass")
+
+local Button = Misc:CreateButton({
+   Name = "Bypass Team selection (Become neutral)",
+   Callback = function()
+
+        local Players = game:GetService("Players")
+        local RunService = game:GetService("RunService")
+
+        local player = Players.LocalPlayer
+
+        local function setupCamera()
+            local character = player.Character or player.CharacterAdded:Wait()
+            local humanoid = character:WaitForChild("Humanoid")
+
+            workspace.CurrentCamera.CameraSubject = humanoid
+            workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+
+            local function updateCamera()
+                if workspace.CurrentCamera.CameraSubject ~= humanoid then
+                    workspace.CurrentCamera.CameraSubject = humanoid
+                end
+            end
+
+            local cameraUpdateConnection = RunService.RenderStepped:Connect(updateCamera)
+
+            humanoid.Died:Connect(function()
+                if cameraUpdateConnection then
+                    cameraUpdateConnection:Disconnect()
+                end
+            end)
+        end
+
+        player.CharacterAdded:Connect(setupCamera)
+
+        if player.Character then
+            setupCamera()
+        end
+
+        -- 🔥 Destroy UI
+        local gui = player:WaitForChild("PlayerGui"):WaitForChild("Menu")
+        if gui then
+            if gui:FindFirstChild("Frame") then
+                gui.Frame:Destroy()
+            end
+            if gui:FindFirstChild("Teamchange") then
+                gui.Teamchange:Destroy()
+            end
+        end
+
+        -- 🚀 TELEPORT
+        local character = player.Character or player.CharacterAdded:Wait()
+        local hrp = character:WaitForChild("HumanoidRootPart")
+
+        hrp.CFrame = CFrame.new(-5.57590199, 6.75000143, 3.554919, 7.44462013e-05, -0.258869469, -0.965912402, -1, -7.46250153e-05, -5.71608543e-05, -5.71608543e-05, 0.965912402, -0.258869529) 
+
+   end,
+})
+
+
 local Tp = Window:CreateTab("Teleport", 4483362458) -- Title, Image
 
 local idk = Tp:CreateSection("Teleport to what ever u want!")
