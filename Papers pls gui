@@ -1461,120 +1461,75 @@ local Section = FlingTab:CreateSection("You maybe have to reset character to mak
 
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
 local player = Players.LocalPlayer
 
 ------------------------------------------------
 -- VARIABLES
 ------------------------------------------------
-local flingActive = false
-local antiFling = false
-local flingPower = 100
-local touchConnection = nil
+local hiddenfling = false
+local flingThread = nil
+local flingForce = 10000
 
 ------------------------------------------------
--- SAFE CHARACTER GETTER
+-- 🌪 CORE FLING (YOUR SCRIPT RECREATED)
 ------------------------------------------------
-local function getChar()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hrp = char:WaitForChild("HumanoidRootPart")
-    return char, hrp
+local function flingLoop()
+    local lp = player
+    local movel = 0.1
+
+    while hiddenfling do
+        RunService.Heartbeat:Wait()
+
+        local c = lp.Character
+        local hrp = c and c:FindFirstChild("HumanoidRootPart")
+
+        if hrp then
+            local vel = hrp.Velocity
+
+            -- 💥 main fling burst (same as your script)
+            hrp.Velocity = vel * 10000 + Vector3.new(0, 10000, 0)
+
+            RunService.RenderStepped:Wait()
+            hrp.Velocity = vel
+
+            RunService.Stepped:Wait()
+            hrp.Velocity = vel + Vector3.new(0, movel, 0)
+
+            movel = -movel
+        end
+    end
 end
 
 ------------------------------------------------
--- 🌪 TOUCH FLING TOGGLE (FIXED CALLBACK)
+-- 🌪 TOGGLE (FIXED + RAYFIELD SAFE)
 ------------------------------------------------
 FlingTab:CreateToggle({
     Name = "Touch Fling",
     CurrentValue = false,
     Callback = function(Value)
 
-        flingActive = Value
-
-        local char, hrp = getChar()
-
-        -- cleanup old spin if exists
-        for _, v in pairs(hrp:GetChildren()) do
-            if v:IsA("BodyAngularVelocity") then
-                v:Destroy()
-            end
-        end
-
-        if touchConnection then
-            touchConnection:Disconnect()
-            touchConnection = nil
-        end
+        hiddenfling = Value
 
         if Value then
-            -- 🌪 spin engine (your tool system)
-            local spin = Instance.new("BodyAngularVelocity")
-            spin.Name = "FlingSpin"
-            spin.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
-            spin.AngularVelocity = Vector3.new(0, flingPower, 0)
-            spin.P = 1e5
-            spin.Parent = hrp
-
-            -- 💥 touch logic
-            touchConnection = hrp.Touched:Connect(function(hit)
-                if not flingActive then return end
-
-                local otherChar = hit.Parent
-                local otherPlayer = Players:GetPlayerFromCharacter(otherChar)
-                if not otherPlayer or otherPlayer == player then return end
-
-                local otherHRP = otherChar:FindFirstChild("HumanoidRootPart")
-                if not otherHRP then return end
-
-                local dir = (otherHRP.Position - hrp.Position)
-                if dir.Magnitude == 0 then return end
-
-                dir = dir.Unit
-
-                otherHRP.AssemblyLinearVelocity =
-                    (dir * flingPower * 60) + Vector3.new(0, flingPower * 2, 0)
-            end)
+            flingThread = task.spawn(flingLoop)
+        else
+            hiddenfling = false
         end
     end
 })
 
-------------------------------------------------
--- ⚡ POWER SLIDER
-------------------------------------------------
 FlingTab:CreateSlider({
-    Name = "Fling Power",
-    Range = {50, 500},
-    Increment = 10,
-    CurrentValue = 100,
+    Name = "Fling Force",
+    Range = {50, 50000},
+    Increment = 100,
+    CurrentValue = 10000,
     Callback = function(Value)
-        flingPower = Value
+        flingForce = Value
     end
 })
 
-------------------------------------------------
--- 🛡 ANTI FLING (FIXED)
-------------------------------------------------
-FlingTab:CreateToggle({
-    Name = "Anti Fling",
-    CurrentValue = false,
-    Callback = function(Value)
-
-        antiFling = Value
-
-        if Value then
-            task.spawn(function()
-                while antiFling do
-                    local char, hrp = getChar()
-
-                    if hrp.AssemblyLinearVelocity.Magnitude > 120 then
-                        hrp.AssemblyLinearVelocity = Vector3.new(0,0,0)
-                        hrp.AssemblyAngularVelocity = Vector3.new(0,0,0)
-                    end
-
-                    task.wait(0.1)
-                end
-            end)
-        end
-    end
-})
 
 Rayfield:Notify({
    Title = "Sucefuly Loaded!",
