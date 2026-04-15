@@ -1,0 +1,418 @@
+--// LOAD RAYFIELD
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Zombies vs Humans cheetos",
+   LoadingTitle = "Loading...",
+   LoadingSubtitle = "by luauuser",
+   ConfigurationSaving = {
+      Enabled = false
+   }
+})
+
+--// HITBOX TAB
+local HitboxTab = Window:CreateTab("Hitbox", 4483362458)
+
+--// SERVICES
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+--// SETTINGS
+local isEnabled = true
+local currentSize = 10
+local currentTrans = 0.5
+
+--// TEAM CHECK
+local function isEnemy(otherPlayer)
+    if not otherPlayer.Team or not player.Team then
+        return true
+    end
+    return otherPlayer.Team ~= player.Team
+end
+
+--// APPLY HITBOX (single target only)
+local function applyHitbox(char, owner)
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    if isEnabled and isEnemy(owner) then
+        root.Size = Vector3.new(currentSize, currentSize, currentSize)
+        root.Transparency = currentTrans
+    else
+        root.Size = Vector3.new(2, 2, 1)
+        root.Transparency = 1
+    end
+
+    root.CanCollide = false
+end
+
+--// APPLY ONLY ONE PLAYER
+local function refreshPlayer(p)
+    if p == player then return end
+    if p.Character then
+        applyHitbox(p.Character, p)
+    end
+end
+
+--// HOOK PLAYER (RESPAWN SAFE)
+local function hookPlayer(p)
+    if p == player then return end
+
+    -- initial spawn
+    if p.Character then
+        task.spawn(function()
+            refreshPlayer(p)
+        end)
+    end
+
+    -- respawn ONLY THIS PLAYER
+    p.CharacterAdded:Connect(function(char)
+        task.wait(0.1)
+        applyHitbox(char, p)
+    end)
+end
+
+--// SETUP ALL PLAYERS
+for _, p in ipairs(Players:GetPlayers()) do
+    hookPlayer(p)
+end
+
+Players.PlayerAdded:Connect(hookPlayer)
+
+--// TEAM CHANGE (light refresh, NOT global spam)
+player:GetPropertyChangedSignal("Team"):Connect(function()
+    task.wait(0.1)
+    for _, p in ipairs(Players:GetPlayers()) do
+        refreshPlayer(p)
+    end
+end)
+
+HitboxTab:CreateToggle({
+   Name = "Enable Hitbox Expander",
+   CurrentValue = false,
+   Callback = function(Value)
+      isEnabled = Value
+
+      -- refresh once only
+      for _, p in ipairs(Players:GetPlayers()) do
+          if p ~= player then
+              refreshPlayer(p)
+          end
+      end
+   end
+})
+
+HitboxTab:CreateSlider({
+   Name = "Hitbox Size",
+   Range = {1, 20},
+   Increment = 1,
+   CurrentValue = currentSize,
+   Callback = function(Value)
+      currentSize = Value
+
+      for _, p in ipairs(Players:GetPlayers()) do
+          refreshPlayer(p)
+      end
+   end
+})
+
+HitboxTab:CreateSlider({
+   Name = "Transparency",
+   Range = {1, 0.5},
+   Increment = 0.01,
+   CurrentValue = currentTrans,
+   Callback = function(Value)
+      currentTrans = Value
+
+      for _, p in ipairs(Players:GetPlayers()) do
+          refreshPlayer(p)
+      end
+   end
+})
+
+
+--// ESP TAB
+local EspTab = Window:CreateTab("ESP", 4483362458)
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local espEnabled = false
+local espCache = {} -- [player] = Highlight
+
+--// COLOR LOGIC
+local function getColor(p)
+    if not p.Team or not player.Team then
+        return Color3.fromRGB(255, 60, 60)
+    end
+
+    return (p.Team == player.Team)
+        and Color3.fromRGB(0, 170, 255)
+        or Color3.fromRGB(255, 60, 60)
+end
+
+--// CREATE / REFRESH ESP
+local function applyESP(p)
+    if p == player then return end
+    if not espEnabled then return end
+
+    local char = p.Character
+    if not char then return end
+
+    -- wait for proper spawn
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    -- remove old highlight (NO duplicates allowed)
+    if espCache[p] then
+        espCache[p]:Destroy()
+        espCache[p] = nil
+    end
+
+    local hl = Instance.new("Highlight")
+    hl.Name = "ESP_Highlight"
+    hl.Adornee = char
+    hl.FillTransparency = 0.5
+    hl.OutlineTransparency = 0
+    hl.FillColor = getColor(p)
+
+    hl.Parent = char
+    espCache[p] = hl
+end
+
+--// REMOVE ESP
+local function removeESP(p)
+    if espCache[p] then
+        espCache[p]:Destroy()
+        espCache[p] = nil
+    end
+end
+
+--// SAFE PLAYER HOOK
+local function hookPlayer(p)
+    if p == player then return end
+
+    -- 👤 when character spawns (RESPAWN SAFE)
+    p.CharacterAdded:Connect(function(char)
+        -- wait for full load (important fix)
+        task.wait(0.2)
+
+        if espEnabled then
+            applyESP(p)
+        end
+    end)
+
+    -- 👤 if already spawned
+    if p.Character then
+        task.spawn(function()
+            task.wait(0.2)
+            if espEnabled then
+                applyESP(p)
+            end
+        end)
+    end
+end
+
+--// INITIAL SETUP
+for _, p in ipairs(Players:GetPlayers()) do
+    hookPlayer(p)
+end
+
+Players.PlayerAdded:Connect(function(p)
+    hookPlayer(p)
+
+    -- immediate respawn-safe apply
+    p.CharacterAdded:Connect(function()
+        task.wait(0.2)
+        if espEnabled then
+            applyESP(p)
+        end
+    end)
+end)
+
+--// TEAM CHANGE UPDATE
+player:GetPropertyChangedSignal("Team"):Connect(function()
+    task.wait(0.1)
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if espEnabled then
+            applyESP(p)
+        end
+    end
+end)
+
+EspTab:CreateToggle({
+   Name = "Enable ESP",
+   CurrentValue = false,
+   Callback = function(Value)
+      espEnabled = Value
+
+      for _, p in ipairs(Players:GetPlayers()) do
+          if p ~= player then
+              if Value then
+                  applyESP(p)
+              else
+                  removeESP(p)
+              end
+          end
+      end
+   end
+})
+
+
+--// MOVEMENT TAB
+local MoveTab = Window:CreateTab("Movement", 4483362458)
+
+local speedValue = 16
+local jumpValue = 50
+
+local function applyMovement()
+    local char = player.Character
+    if not char then return end
+
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed = speedValue
+        hum.JumpPower = jumpValue
+    end
+end
+
+-- 🔥 APPLY ON RESPAWN
+player.CharacterAdded:Connect(function(char)
+    local hum = char:WaitForChild("Humanoid", 5)
+    if hum then
+        applyMovement()
+    end
+end)
+
+-- 🔁 LOCK LOOP (ANTI RESET)
+task.spawn(function()
+    while true do
+        task.wait(0.2)
+        applyMovement()
+    end
+end)
+
+-- SPEED
+MoveTab:CreateSlider({
+   Name = "WalkSpeed",
+   Range = {0, 200},
+   Increment = 1,
+   CurrentValue = speedValue,
+   Callback = function(Value)
+      speedValue = Value
+      applyMovement()
+   end
+})
+
+-- JUMP
+MoveTab:CreateSlider({
+   Name = "JumpPower",
+   Range = {0, 200},
+   Increment = 1,
+   CurrentValue = jumpValue,
+   Callback = function(Value)
+      jumpValue = Value
+      applyMovement()
+   end
+})
+
+
+--// FLY SYSTEM
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+
+local flyEnabled = false
+local flyKey = Enum.KeyCode.V
+local upKey = Enum.KeyCode.E
+
+local flyConn
+local inputConn
+local upHeld = false
+
+local function setupFly(char)
+    local humanoid = char:WaitForChild("Humanoid")
+    local root = char:WaitForChild("HumanoidRootPart")
+
+    -- CLEAN OLD CONNECTIONS
+    if flyConn then flyConn:Disconnect() end
+    if inputConn then inputConn:Disconnect() end
+
+    -- INPUT
+    inputConn = UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+
+        if input.KeyCode == flyKey then
+            flyEnabled = not flyEnabled
+        end
+
+        if input.KeyCode == upKey then
+            upHeld = true
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.KeyCode == upKey then
+            upHeld = false
+        end
+    end)
+
+    -- FLY LOOP
+    flyConn = RunService.Heartbeat:Connect(function()
+        if not flyEnabled then return end
+
+        local moveDir = root.CFrame.LookVector
+
+        local velocity = Vector3.zero
+
+        -- forward movement (based on camera look)
+        if humanoid.MoveDirection.Magnitude > 0 then
+            velocity = humanoid.MoveDirection * 50
+        end
+
+        -- upward movement
+        if upHeld then
+            velocity = velocity + Vector3.new(0, 50, 0)
+        end
+
+        local bv = Instance.new("BodyVelocity")
+        bv.Velocity = velocity
+        bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+        bv.Parent = root
+
+        game:GetService("Debris"):AddItem(bv, 0.1)
+    end)
+end
+
+--// RESPAWN SAFE
+player.CharacterAdded:Connect(setupFly)
+if player.Character then
+    setupFly(player.Character)
+end
+
+MoveTab:CreateToggle({
+   Name = "Fly Mode",
+   CurrentValue = false,
+   Callback = function(Value)
+      flyEnabled = Value
+   end
+})
+
+MoveTab:CreateInput({
+   Name = "Fly Toggle Key (single letter)",
+   PlaceholderText = "V",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      local key = Text:upper():sub(1,1)
+      local success, enumKey = pcall(function()
+          return Enum.KeyCode[key]
+      end)
+
+      if success and enumKey then
+          flyKey = enumKey
+      end
+   end
+})
