@@ -118,7 +118,7 @@ HitboxTab:CreateSlider({
 
 HitboxTab:CreateSlider({
    Name = "Transparency",
-   Range = {1, 0.5},
+   Range = {0.5, 1},
    Increment = 0.01,
    CurrentValue = currentTrans,
    Callback = function(Value)
