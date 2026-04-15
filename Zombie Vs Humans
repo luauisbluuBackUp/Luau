@@ -130,6 +130,226 @@ HitboxTab:CreateSlider({
    end
 })
 
+local Main = Window:CreateTab("Aimbot", 4483362458) -- Title, Image
+
+-- SERVICES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- SETTINGS
+local SMOOTHNESS = 0.18
+local MAX_DIST = 1000
+local TARGET_PART = "Head"
+local FOV_RADIUS = 150
+
+-- STATES
+local AimbotEnabled = false
+local TeamCheck = false
+local ShowFOV = false
+
+-- =========================
+-- DRAW FOV CIRCLE
+-- =========================
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = ShowFOV
+FOVCircle.Radius = FOV_RADIUS
+FOVCircle.Thickness = 2
+FOVCircle.Color = Color3.fromRGB(0,255,200)
+FOVCircle.Filled = false
+
+-- =========================
+-- UTILS
+-- =========================
+local function isAlive(character)
+	local hum = character and character:FindFirstChildWhichIsA("Humanoid")
+	return hum and hum.Health > 0
+end
+
+local function getTargetPart(character)
+	local names = {TARGET_PART,"Head","HumanoidRootPart","UpperTorso","Torso"}
+	for i = 1, #names do
+		local p = character:FindFirstChild(names[i])
+		if p and p:IsA("BasePart") then
+			return p
+		end
+	end
+	return nil
+end
+
+-- =========================
+-- WALL CHECK
+-- =========================
+local function isVisible(targetPart, character)
+	local origin = Camera.CFrame.Position
+	local direction = targetPart.Position - origin
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	params.FilterDescendantsInstances = {LocalPlayer.Character, character}
+
+	local result = workspace:Raycast(origin, direction, params)
+
+	if not result then
+		return true
+	end
+
+	return result.Instance:IsDescendantOf(character)
+end
+
+-- =========================
+-- GET TARGET (SAFE VERSION)
+-- =========================
+local function getClosestPlayer()
+	local closest = nil
+	local shortest = math.huge
+
+	local camPos = Camera.CFrame.Position
+	local screenCenter = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+
+	for _,plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			local char = plr.Character
+
+			if char and isAlive(char) then
+				
+				if not (TeamCheck and plr.Team == LocalPlayer.Team) then
+
+					local hrp = char:FindFirstChild("HumanoidRootPart")
+					local part = getTargetPart(char)
+
+					if hrp and part then
+						
+						-- HEIGHT CHECK
+						if hrp.Position.Y >= (camPos.Y - 10) then
+							
+							-- DIST CHECK
+							local dist3D = (hrp.Position - camPos).Magnitude
+							if dist3D <= MAX_DIST then
+								
+								local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+
+								if onScreen then
+									local screenPoint = Vector2.new(screenPos.X, screenPos.Y)
+									local dist2D = (screenPoint - screenCenter).Magnitude
+
+									if dist2D <= FOV_RADIUS then
+										
+										if isVisible(part, char) then
+											if dist2D < shortest then
+												shortest = dist2D
+												closest = plr
+											end
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return closest
+end
+
+-- =========================
+-- AIM LOOP
+-- =========================
+RunService.RenderStepped:Connect(function(dt)
+	local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+
+	FOVCircle.Position = center
+	FOVCircle.Radius = FOV_RADIUS
+	FOVCircle.Visible = ShowFOV
+
+	if not AimbotEnabled then return end
+
+	local targetPlayer = getClosestPlayer()
+	if not targetPlayer then return end
+
+	local char = targetPlayer.Character
+	if not isAlive(char) then return end
+
+	local part = getTargetPart(char)
+	if not part then return end
+
+	local camPos = Camera.CFrame.Position
+	local desired = CFrame.new(camPos, part.Position)
+
+	local t = 1 - math.exp(-(1 - SMOOTHNESS) * 60 * dt)
+	local newCF = Camera.CFrame:Lerp(desired, t)
+
+	Camera.CFrame = CFrame.new(camPos, (newCF * CFrame.new(0,0,-1)).Position)
+end)
+
+-- =========================
+-- UI (FIXED)
+-- =========================
+
+Main:CreateToggle({
+	Name = "Aimbot",
+	CurrentValue = false,
+	Flag = "AimbotToggle",
+	Callback = function(Value)
+		AimbotEnabled = Value
+	end,
+})
+
+Main:CreateToggle({
+	Name = "Team Check",
+	CurrentValue = false,
+	Flag = "TeamCheckToggle",
+	Callback = function(Value)
+		TeamCheck = Value
+	end,
+})
+
+Main:CreateToggle({
+	Name = "Show FOV Circle",
+	CurrentValue = false,
+	Flag = "FOVCircleToggle",
+	Callback = function(Value)
+		ShowFOV = Value
+	end,
+})
+
+Main:CreateSlider({
+	Name = "FOV Radius",
+	Range = {50, 400},
+	Increment = 5,
+	CurrentValue = 150,
+	Flag = "FOVSlider",
+	Callback = function(Value)
+		FOV_RADIUS = Value
+	end,
+})
+
+Main:CreateSlider({
+	Name = "Smoothness",
+	Range = {0, 1},
+	Increment = 0.01,
+	CurrentValue = 0.18,
+	Flag = "SmoothnessSlider",
+	Callback = function(Value)
+		SMOOTHNESS = Value
+	end,
+})
+
+Main:CreateInput({
+	Name = "Target Part",
+	PlaceholderText = "Head",
+	RemoveTextAfterFocusLost = false,
+	Callback = function(Text)
+		if Text ~= "" then
+			TARGET_PART = Text
+		end
+	end,
+})
+
 
 --// ESP TAB
 local EspTab = Window:CreateTab("ESP", 4483362458)
