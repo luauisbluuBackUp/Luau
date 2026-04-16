@@ -590,36 +590,61 @@ if not getgenv().HookLoaded then
     end))
 end
 
+--// SERVICES
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+--// STATE
+getgenv().CFrameFlyEnabled = getgenv().CFrameFlyEnabled or false
+getgenv().FlySpeed = getgenv().FlySpeed or 60
+getgenv().FlySmoothness = getgenv().FlySmoothness or 0.2
+
+local flyKey = Enum.KeyCode.V
+local upKey = Enum.KeyCode.E
+local downKey = Enum.KeyCode.Q
+
+local upHeld = false
+local downHeld = false
+
+local flyConn
+local inputConn
+local inputEndConn
+
 ------------------------------------------------
---// FLY SYSTEM (FIXED + SMOOTH + VERTICAL WORKS)
+--// FLY SETUP
 ------------------------------------------------
 local function setupFly(char)
-    local humanoid = char:WaitForChild("Humanoid")
     local root = char:WaitForChild("HumanoidRootPart")
+    local humanoid = char:WaitForChild("Humanoid")
 
     if flyConn then flyConn:Disconnect() end
     if inputConn then inputConn:Disconnect() end
     if inputEndConn then inputEndConn:Disconnect() end
 
+    -- stop humanoid fighting movement
+    humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+
+    ------------------------------------------------
     -- INPUT
+    ------------------------------------------------
     inputConn = UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
 
         if input.KeyCode == flyKey then
-            getgenv().FlyEnabled = not getgenv().FlyEnabled
+            getgenv().CFrameFlyEnabled = not getgenv().CFrameFlyEnabled
 
-            if getgenv().FlyEnabled then
-                humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-            else
+            if not getgenv().CFrameFlyEnabled then
                 humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
             end
         end
 
         if input.KeyCode == upKey then
             upHeld = true
-        end
-
-        if input.KeyCode == downKey then
+        elseif input.KeyCode == downKey then
             downHeld = true
         end
     end)
@@ -632,13 +657,15 @@ local function setupFly(char)
         end
     end)
 
+    ------------------------------------------------
     -- LOOP
+    ------------------------------------------------
     flyConn = RunService.RenderStepped:Connect(function(dt)
-        if not getgenv().FlyEnabled then return end
+        if not getgenv().CFrameFlyEnabled then return end
 
         local camCF = camera.CFrame
 
-        -- flat camera movement (no tilt issues)
+        -- flat camera movement (no tilt chaos)
         local forward = Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z)
         local right = Vector3.new(camCF.RightVector.X, 0, camCF.RightVector.Z)
 
@@ -652,22 +679,22 @@ local function setupFly(char)
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir -= right end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir += right end
 
-        -- vertical control (FIXED STRONG UP/DOWN)
-        if upHeld then moveDir += Vector3.new(0, 1.5, 0) end
-        if downHeld then moveDir -= Vector3.new(0, 1.5, 0) end
+        -- vertical control
+        if upHeld then moveDir += Vector3.new(0, 1, 0) end
+        if downHeld then moveDir -= Vector3.new(0, 1, 0) end
 
         if moveDir.Magnitude > 0 then
             moveDir = moveDir.Unit
         end
 
         local speed = getgenv().FlySpeed
-        local smoothness = getgenv().FlySmoothness
+        local smooth = getgenv().FlySmoothness
 
         local targetPos = root.Position + (moveDir * speed * dt)
 
         root.CFrame = root.CFrame:Lerp(
             CFrame.new(targetPos, targetPos + camCF.LookVector),
-            smoothness
+            smooth
         )
     end)
 end
@@ -685,10 +712,10 @@ end
 ------------------------------------------------
 
 MoveTab:CreateToggle({
-    Name = "Smooth Fly",
-    CurrentValue = getgenv().FlyEnabled,
+    Name = "CFrame Fly",
+    CurrentValue = getgenv().CFrameFlyEnabled,
     Callback = function(Value)
-        getgenv().FlyEnabled = Value
+        getgenv().CFrameFlyEnabled = Value
     end,
 })
 
@@ -696,7 +723,6 @@ MoveTab:CreateSlider({
     Name = "Fly Speed",
     Range = {10, 200},
     Increment = 5,
-    Suffix = "Speed",
     CurrentValue = getgenv().FlySpeed,
     Callback = function(Value)
         getgenv().FlySpeed = Value
@@ -707,7 +733,6 @@ MoveTab:CreateSlider({
     Name = "Fly Smoothness",
     Range = {0.01, 0.3},
     Increment = 0.01,
-    Suffix = "Smooth",
     CurrentValue = getgenv().FlySmoothness,
     Callback = function(Value)
         getgenv().FlySmoothness = Value
@@ -715,7 +740,7 @@ MoveTab:CreateSlider({
 })
 
 MoveTab:CreateInput({
-    Name = "Fly Key",
+    Name = "Fly Toggle Key",
     PlaceholderText = "V",
     RemoveTextAfterFocusLost = false,
     Callback = function(Text)
@@ -730,18 +755,86 @@ MoveTab:CreateInput({
     end,
 })
 
+
 MoveTab:CreateToggle({
-    Name = "No Fall Damage",
+    Name = "No Fall Damage (Blocks remotes)",
     CurrentValue = getgenv().NoFallEnabled,
     Callback = function(Value)
         getgenv().NoFallEnabled = Value
     end,
 })
 
+--// SERVICES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+--// STATE
+getgenv().AntiFallEnabled = getgenv().AntiFallEnabled or false
+local antiFallConn
+
+------------------------------------------------
+--// ANTI FALL SYSTEM (PHYSICS BASED)
+------------------------------------------------
+local function setupAntiFall(char)
+    local root = char:WaitForChild("HumanoidRootPart")
+    local humanoid = char:WaitForChild("Humanoid")
+
+    if antiFallConn then
+        antiFallConn:Disconnect()
+        antiFallConn = nil
+    end
+
+    antiFallConn = RunService.Heartbeat:Connect(function()
+        if not getgenv().AntiFallEnabled then return end
+        if not root or not humanoid then return end
+
+        local vel = root.AssemblyLinearVelocity
+
+        -- 🪂 detect dangerous fall speed
+        if vel.Y < -50 then
+            -- soften fall instead of letting damage threshold hit
+            root.AssemblyLinearVelocity = Vector3.new(
+                vel.X,
+                -10, -- controlled descent
+                vel.Z
+            )
+        end
+    end)
+end
+
+------------------------------------------------
+--// RESPAWN SAFE
+------------------------------------------------
+player.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    setupAntiFall(char)
+end)
+
+if player.Character then
+    setupAntiFall(player.Character)
+end
+
+------------------------------------------------
+--// RAYFIELD TOGGLE
+------------------------------------------------
+MoveTab:CreateToggle({
+    Name = "Anti Fall (Physics)",
+    CurrentValue = getgenv().AntiFallEnabled,
+    Callback = function(Value)
+        getgenv().AntiFallEnabled = Value
+
+        -- instant re-evaluate current character
+        if player.Character then
+            setupAntiFall(player.Character)
+        end
+    end,
+})
 
 
 Rayfield:Notify({
-   Title = "Executed v0.02 pal!",
+   Title = "Executed v0.01 pal!",
    Content = "Now enjoy gng :3",
    Duration = 6.5,
    Image = 4483362458,
