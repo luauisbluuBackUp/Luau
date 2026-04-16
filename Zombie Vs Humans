@@ -562,8 +562,8 @@ local inputEndConn
 local upHeld = false
 local downHeld = false
 
---// MAIN FLY FUNCTION
 local function setupFly(char)
+    local humanoid = char:WaitForChild("Humanoid")
     local root = char:WaitForChild("HumanoidRootPart")
 
     -- CLEAN OLD
@@ -571,12 +571,18 @@ local function setupFly(char)
     if inputConn then inputConn:Disconnect() end
     if inputEndConn then inputEndConn:Disconnect() end
 
+    -- IMPORTANT: stop humanoid from interfering
+    humanoid.PlatformStand = false
+
     -- INPUT BEGIN
     inputConn = UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
 
         if input.KeyCode == flyKey then
             getgenv().FlyEnabled = not getgenv().FlyEnabled
+
+            -- 🧠 toggle humanoid state
+            humanoid.PlatformStand = getgenv().FlyEnabled
         end
 
         if input.KeyCode == upKey then
@@ -598,7 +604,7 @@ local function setupFly(char)
         end
     end)
 
-    -- FLY LOOP (SMOOTH)
+    -- FLY LOOP
     flyConn = RunService.RenderStepped:Connect(function(dt)
         if not getgenv().FlyEnabled then return end
 
@@ -639,13 +645,14 @@ local function setupFly(char)
 
         local targetPos = root.Position + (moveDir * speed * dt)
 
-        -- ✨ smooth teleport
+        -- ✨ smooth movement
         root.CFrame = root.CFrame:Lerp(
             CFrame.new(targetPos, targetPos + camCF.LookVector),
             smoothness
         )
     end)
 end
+
 
 --// RESPAWN SAFE
 player.CharacterAdded:Connect(setupFly)
@@ -761,7 +768,7 @@ MoveTab:CreateToggle({
 
 
 Rayfield:Notify({
-   Title = "Executed v0.1 pal!",
+   Title = "Executed v0.01 pal!",
    Content = "Now enjoy gng :3",
    Duration = 6.5,
    Image = 4483362458,
