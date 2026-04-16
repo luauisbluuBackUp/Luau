@@ -481,7 +481,7 @@ EspTab:CreateToggle({
 
 
 --// MOVEMENT TAB
-local MoveTab = Window:CreateTab("Movement", 4483362458)
+local MoveTab = Window:CreateTab("Misc", 4483362458)
 
 local speedValue = 16
 local jumpValue = 50
@@ -538,72 +538,112 @@ MoveTab:CreateSlider({
 })
 
 
---// FLY SYSTEM
+--// SERVICES
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 
-local flyEnabled = false
+--// GLOBAL SETTINGS (PERSIST)
+getgenv().FlyEnabled = getgenv().FlyEnabled or false
+getgenv().FlySpeed = getgenv().FlySpeed or 60
+getgenv().FlySmoothness = getgenv().FlySmoothness or 0.15
+
 local flyKey = Enum.KeyCode.V
 local upKey = Enum.KeyCode.E
+local downKey = Enum.KeyCode.Q
 
+--// STATE
 local flyConn
 local inputConn
+local inputEndConn
 local upHeld = false
+local downHeld = false
 
+--// MAIN FLY FUNCTION
 local function setupFly(char)
-    local humanoid = char:WaitForChild("Humanoid")
     local root = char:WaitForChild("HumanoidRootPart")
 
-    -- CLEAN OLD CONNECTIONS
+    -- CLEAN OLD
     if flyConn then flyConn:Disconnect() end
     if inputConn then inputConn:Disconnect() end
+    if inputEndConn then inputEndConn:Disconnect() end
 
-    -- INPUT
+    -- INPUT BEGIN
     inputConn = UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
 
         if input.KeyCode == flyKey then
-            flyEnabled = not flyEnabled
+            getgenv().FlyEnabled = not getgenv().FlyEnabled
         end
 
         if input.KeyCode == upKey then
             upHeld = true
         end
+
+        if input.KeyCode == downKey then
+            downHeld = true
+        end
     end)
 
-    UserInputService.InputEnded:Connect(function(input)
+    -- INPUT END
+    inputEndConn = UserInputService.InputEnded:Connect(function(input)
         if input.KeyCode == upKey then
             upHeld = false
         end
+        if input.KeyCode == downKey then
+            downHeld = false
+        end
     end)
 
-    -- FLY LOOP
-    flyConn = RunService.Heartbeat:Connect(function()
-        if not flyEnabled then return end
+    -- FLY LOOP (SMOOTH)
+    flyConn = RunService.RenderStepped:Connect(function(dt)
+        if not getgenv().FlyEnabled then return end
 
-        local moveDir = root.CFrame.LookVector
+        local moveDir = Vector3.zero
 
-        local velocity = Vector3.zero
+        local camCF = camera.CFrame
+        local forward = camCF.LookVector
+        local right = camCF.RightVector
 
-        -- forward movement (based on camera look)
-        if humanoid.MoveDirection.Magnitude > 0 then
-            velocity = humanoid.MoveDirection * 50
+        -- WASD
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveDir += forward
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveDir -= forward
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveDir -= right
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveDir += right
         end
 
-        -- upward movement
+        -- UP / DOWN
         if upHeld then
-            velocity = velocity + Vector3.new(0, 50, 0)
+            moveDir += Vector3.new(0,1,0)
+        end
+        if downHeld then
+            moveDir -= Vector3.new(0,1,0)
         end
 
-        local bv = Instance.new("BodyVelocity")
-        bv.Velocity = velocity
-        bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-        bv.Parent = root
+        if moveDir.Magnitude > 0 then
+            moveDir = moveDir.Unit
+        end
 
-        game:GetService("Debris"):AddItem(bv, 0.1)
+        local speed = getgenv().FlySpeed
+        local smoothness = getgenv().FlySmoothness
+
+        local targetPos = root.Position + (moveDir * speed * dt)
+
+        -- ✨ smooth teleport
+        root.CFrame = root.CFrame:Lerp(
+            CFrame.new(targetPos, targetPos + camCF.LookVector),
+            smoothness
+        )
     end)
 end
 
@@ -613,32 +653,115 @@ if player.Character then
     setupFly(player.Character)
 end
 
+--// =========================
+--// RAYFIELD UI
+--// =========================
+
+-- TOGGLE
 MoveTab:CreateToggle({
-   Name = "Fly Mode",
-   CurrentValue = false,
-   Callback = function(Value)
-      flyEnabled = Value
-   end
+    Name = "Smooth Fly",
+    CurrentValue = getgenv().FlyEnabled,
+    Callback = function(Value)
+        getgenv().FlyEnabled = Value
+    end,
 })
 
+-- SPEED SLIDER
+MoveTab:CreateSlider({
+    Name = "Fly Speed",
+    Range = {10, 200},
+    Increment = 5,
+    Suffix = "Speed",
+    CurrentValue = getgenv().FlySpeed,
+    Callback = function(Value)
+        getgenv().FlySpeed = Value
+    end,
+})
+
+-- SMOOTHNESS SLIDER
+MoveTab:CreateSlider({
+    Name = "Fly Smoothness",
+    Range = {0.01, 0.3},
+    Increment = 0.01,
+    Suffix = "Smooth",
+    CurrentValue = getgenv().FlySmoothness,
+    Callback = function(Value)
+        getgenv().FlySmoothness = Value
+    end,
+})
+
+-- KEYBIND INPUT
 MoveTab:CreateInput({
-   Name = "Fly Toggle Key (single letter)",
-   PlaceholderText = "V",
-   RemoveTextAfterFocusLost = false,
-   Callback = function(Text)
-      local key = Text:upper():sub(1,1)
-      local success, enumKey = pcall(function()
-          return Enum.KeyCode[key]
-      end)
+    Name = "Fly Toggle Key",
+    PlaceholderText = "V",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        local key = Text:upper():sub(1,1)
+        local success, enumKey = pcall(function()
+            return Enum.KeyCode[key]
+        end)
 
-      if success and enumKey then
-          flyKey = enumKey
-      end
-   end
+        if success and enumKey then
+            flyKey = enumKey
+        end
+    end
 })
+
+
+-- SERVICES
+local Players = game:GetService("Players")
+local REPLICATED_STORAGE = cloneref(game:GetService("ReplicatedStorage"))
+
+-- REMOTE (function so it refreshes after respawn if needed)
+local function GetFallRemote()
+    return REPLICATED_STORAGE:WaitForChild("Remotes"):WaitForChild("FallDamage")
+end
+
+-- STATE
+getgenv().NoFallEnabled = getgenv().NoFallEnabled or false
+getgenv().HookLoaded = getgenv().HookLoaded or false
+
+-- HOOK (only ONCE ever)
+if not getgenv().HookLoaded then
+    getgenv().HookLoaded = true
+
+    local old_namecall
+    old_namecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
+        local self = ...
+        local method = string.lower(getnamecallmethod())
+
+        if getgenv().NoFallEnabled then
+            if typeof(self) == "Instance" and self:IsA("RemoteEvent") then
+                if method == "fireserver" and self == GetFallRemote() then
+                    return -- 🚫 block fall damage forever
+                end
+            end
+        end
+
+        return old_namecall(...)
+    end))
+end
+
+-- OPTIONAL: re-check on respawn (extra safety)
+Players.LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    -- refresh remote reference silently
+    GetFallRemote()
+end)
+
+-- RAYFIELD TOGGLE
+MoveTab:CreateToggle({
+    Name = "No Fall Damage (Blocks remote)",
+    CurrentValue = getgenv().NoFallEnabled,
+    Callback = function(Value)
+        getgenv().NoFallEnabled = Value
+    end,
+})
+
+
 
 Rayfield:Notify({
-   Title = "Executed pal!",
+   Title = "Executed v0.1 pal!",
    Content = "Now enjoy gng :3",
    Duration = 6.5,
    Image = 4483362458,
