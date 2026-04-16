@@ -539,18 +539,21 @@ MoveTab:CreateSlider({
 
 
 --// SERVICES
+local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
---// GLOBAL SETTINGS (PERSIST)
+--// GLOBAL SETTINGS
 getgenv().FlyEnabled = getgenv().FlyEnabled or false
 getgenv().FlySpeed = getgenv().FlySpeed or 60
 getgenv().FlySmoothness = getgenv().FlySmoothness or 0.15
+getgenv().NoFallEnabled = getgenv().NoFallEnabled or false
 
+--// KEYS
 local flyKey = Enum.KeyCode.V
 local upKey = Enum.KeyCode.E
 local downKey = Enum.KeyCode.Q
@@ -562,27 +565,54 @@ local inputEndConn
 local upHeld = false
 local downHeld = false
 
+------------------------------------------------
+--// FALL DAMAGE (SAFE + NO CRASH)
+------------------------------------------------
+local FallRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("FallDamage")
+
+if not getgenv().HookLoaded then
+    getgenv().HookLoaded = true
+
+    local old_namecall
+    old_namecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
+        local self = ...
+        local method = string.lower(getnamecallmethod())
+
+        if getgenv().NoFallEnabled then
+            if typeof(self) == "Instance"
+                and self == FallRemote
+                and method == "fireserver" then
+                return -- 🚫 block fall damage safely
+            end
+        end
+
+        return old_namecall(...)
+    end))
+end
+
+------------------------------------------------
+--// FLY SYSTEM (FIXED + SMOOTH + VERTICAL WORKS)
+------------------------------------------------
 local function setupFly(char)
     local humanoid = char:WaitForChild("Humanoid")
     local root = char:WaitForChild("HumanoidRootPart")
 
-    -- CLEAN OLD
     if flyConn then flyConn:Disconnect() end
     if inputConn then inputConn:Disconnect() end
     if inputEndConn then inputEndConn:Disconnect() end
 
-    -- IMPORTANT: stop humanoid from interfering
-    humanoid.PlatformStand = false
-
-    -- INPUT BEGIN
+    -- INPUT
     inputConn = UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
 
         if input.KeyCode == flyKey then
             getgenv().FlyEnabled = not getgenv().FlyEnabled
 
-            -- 🧠 toggle humanoid state
-            humanoid.PlatformStand = getgenv().FlyEnabled
+            if getgenv().FlyEnabled then
+                humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+            else
+                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
         end
 
         if input.KeyCode == upKey then
@@ -594,47 +624,37 @@ local function setupFly(char)
         end
     end)
 
-    -- INPUT END
     inputEndConn = UserInputService.InputEnded:Connect(function(input)
         if input.KeyCode == upKey then
             upHeld = false
-        end
-        if input.KeyCode == downKey then
+        elseif input.KeyCode == downKey then
             downHeld = false
         end
     end)
 
-    -- FLY LOOP
+    -- LOOP
     flyConn = RunService.RenderStepped:Connect(function(dt)
         if not getgenv().FlyEnabled then return end
 
+        local camCF = camera.CFrame
+
+        -- flat camera movement (no tilt issues)
+        local forward = Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z)
+        local right = Vector3.new(camCF.RightVector.X, 0, camCF.RightVector.Z)
+
+        if forward.Magnitude > 0 then forward = forward.Unit end
+        if right.Magnitude > 0 then right = right.Unit end
+
         local moveDir = Vector3.zero
 
-        local camCF = camera.CFrame
-        local forward = camCF.LookVector
-        local right = camCF.RightVector
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir += forward end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir -= forward end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir -= right end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir += right end
 
-        -- WASD
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            moveDir += forward
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            moveDir -= forward
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            moveDir -= right
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            moveDir += right
-        end
-
-        -- UP / DOWN
-        if upHeld then
-            moveDir += Vector3.new(0,1,0)
-        end
-        if downHeld then
-            moveDir -= Vector3.new(0,1,0)
-        end
+        -- vertical control (FIXED STRONG UP/DOWN)
+        if upHeld then moveDir += Vector3.new(0, 1.5, 0) end
+        if downHeld then moveDir -= Vector3.new(0, 1.5, 0) end
 
         if moveDir.Magnitude > 0 then
             moveDir = moveDir.Unit
@@ -645,7 +665,6 @@ local function setupFly(char)
 
         local targetPos = root.Position + (moveDir * speed * dt)
 
-        -- ✨ smooth movement
         root.CFrame = root.CFrame:Lerp(
             CFrame.new(targetPos, targetPos + camCF.LookVector),
             smoothness
@@ -653,18 +672,18 @@ local function setupFly(char)
     end)
 end
 
-
+------------------------------------------------
 --// RESPAWN SAFE
+------------------------------------------------
 player.CharacterAdded:Connect(setupFly)
 if player.Character then
     setupFly(player.Character)
 end
 
---// =========================
+------------------------------------------------
 --// RAYFIELD UI
---// =========================
+------------------------------------------------
 
--- TOGGLE
 MoveTab:CreateToggle({
     Name = "Smooth Fly",
     CurrentValue = getgenv().FlyEnabled,
@@ -673,7 +692,6 @@ MoveTab:CreateToggle({
     end,
 })
 
--- SPEED SLIDER
 MoveTab:CreateSlider({
     Name = "Fly Speed",
     Range = {10, 200},
@@ -685,7 +703,6 @@ MoveTab:CreateSlider({
     end,
 })
 
--- SMOOTHNESS SLIDER
 MoveTab:CreateSlider({
     Name = "Fly Smoothness",
     Range = {0.01, 0.3},
@@ -697,68 +714,24 @@ MoveTab:CreateSlider({
     end,
 })
 
--- KEYBIND INPUT
 MoveTab:CreateInput({
-    Name = "Fly Toggle Key",
+    Name = "Fly Key",
     PlaceholderText = "V",
     RemoveTextAfterFocusLost = false,
     Callback = function(Text)
         local key = Text:upper():sub(1,1)
-        local success, enumKey = pcall(function()
+        local ok, enumKey = pcall(function()
             return Enum.KeyCode[key]
         end)
 
-        if success and enumKey then
+        if ok and enumKey then
             flyKey = enumKey
         end
-    end
+    end,
 })
 
-
--- SERVICES
-local Players = game:GetService("Players")
-local REPLICATED_STORAGE = cloneref(game:GetService("ReplicatedStorage"))
-
--- REMOTE (function so it refreshes after respawn if needed)
-local function GetFallRemote()
-    return REPLICATED_STORAGE:WaitForChild("Remotes"):WaitForChild("FallDamage")
-end
-
--- STATE
-getgenv().NoFallEnabled = getgenv().NoFallEnabled or false
-getgenv().HookLoaded = getgenv().HookLoaded or false
-
--- HOOK (only ONCE ever)
-if not getgenv().HookLoaded then
-    getgenv().HookLoaded = true
-
-    local old_namecall
-    old_namecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
-        local self = ...
-        local method = string.lower(getnamecallmethod())
-
-        if getgenv().NoFallEnabled then
-            if typeof(self) == "Instance" and self:IsA("RemoteEvent") then
-                if method == "fireserver" and self == GetFallRemote() then
-                    return -- 🚫 block fall damage forever
-                end
-            end
-        end
-
-        return old_namecall(...)
-    end))
-end
-
--- OPTIONAL: re-check on respawn (extra safety)
-Players.LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(1)
-    -- refresh remote reference silently
-    GetFallRemote()
-end)
-
--- RAYFIELD TOGGLE
 MoveTab:CreateToggle({
-    Name = "No Fall Damage (Blocks remote)",
+    Name = "No Fall Damage",
     CurrentValue = getgenv().NoFallEnabled,
     Callback = function(Value)
         getgenv().NoFallEnabled = Value
@@ -768,7 +741,7 @@ MoveTab:CreateToggle({
 
 
 Rayfield:Notify({
-   Title = "Executed v0.01 pal!",
+   Title = "Executed v0.02 pal!",
    Content = "Now enjoy gng :3",
    Duration = 6.5,
    Image = 4483362458,
