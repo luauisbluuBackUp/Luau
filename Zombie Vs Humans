@@ -18,7 +18,7 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 --// SETTINGS
-local isEnabled = true
+local isEnabled = false
 local currentSize = 10
 local currentTrans = 0.5
 
@@ -104,7 +104,7 @@ HitboxTab:CreateToggle({
 
 HitboxTab:CreateSlider({
    Name = "Hitbox Size",
-   Range = {1, 20},
+   Range = {2, 20},
    Increment = 1,
    CurrentValue = currentSize,
    Callback = function(Value)
