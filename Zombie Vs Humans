@@ -11,7 +11,157 @@ local Window = Rayfield:CreateWindow({
 })
 
 --// HITBOX TAB
-local HitboxTab = Window:CreateTab("Hitbox", 4483362458)
+local CombatTab = Window:CreateTab("Combat", 4483362458)
+
+local Section = CombatTab:CreateSection("Kill Aura (WIP)")
+
+-- CLEANUP OLD
+if getgenv().CombatManager and getgenv().CombatManager.Connection then
+    getgenv().CombatManager.Connection:Disconnect()
+end
+
+--// MANAGER
+local CombatManager = {
+    Settings = {
+        AttackRange = 15,
+        AttackInterval = 0.1,
+        FilterTeams = true,
+        IsActive = false
+    }
+}
+
+getgenv().CombatManager = CombatManager
+
+--// SERVICES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Player = Players.LocalPlayer
+
+------------------------------------------------
+-- VALID TARGET
+------------------------------------------------
+local function IsValidTarget(targetPlayer)
+    if targetPlayer == Player then return false end
+
+    local char = targetPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+
+    if not (hum and hum.Health > 0 and root) then return false end
+
+    if CombatManager.Settings.FilterTeams and targetPlayer.Team == Player.Team then
+        return false
+    end
+
+    return true
+end
+
+------------------------------------------------
+-- GET CLOSEST
+------------------------------------------------
+local function GetNearestEnemy()
+    local myChar = Player.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil end
+
+    local closest = nil
+    local shortest = CombatManager.Settings.AttackRange
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if IsValidTarget(p) then
+            local enemyRoot = p.Character.HumanoidRootPart
+            local dist = (myRoot.Position - enemyRoot.Position).Magnitude
+
+            if dist < shortest then
+                shortest = dist
+                closest = p.Character
+            end
+        end
+    end
+
+    return closest
+end
+
+------------------------------------------------
+-- ATTACK
+------------------------------------------------
+local function ExecuteAttack()
+    if not CombatManager.Settings.IsActive then return end
+
+    local char = Player.Character
+    if not char then return end
+
+    local tool = char:FindFirstChildOfClass("Tool")
+    if not tool then return end
+
+    local target = GetNearestEnemy()
+    if not target then return end
+
+    tool:Activate()
+
+    -- smarter remote detection
+    local remote = tool:FindFirstChild("AttackRemote") 
+        or tool:FindFirstChildWhichIsA("RemoteEvent", true)
+
+    if remote then
+        pcall(function()
+            remote:FireServer(target)
+        end)
+    end
+end
+
+------------------------------------------------
+-- LOOP (SAFE)
+------------------------------------------------
+CombatManager.Connection = RunService.Heartbeat:Connect(function()
+    if not CombatManager.Settings.IsActive then return end
+
+    task.wait(CombatManager.Settings.AttackInterval)
+    ExecuteAttack()
+end)
+
+------------------------------------------------
+-- RAYFIELD UI
+------------------------------------------------
+
+CombatTab:CreateToggle({
+    Name = "Kill Aura",
+    CurrentValue = CombatManager.Settings.IsActive,
+    Callback = function(Value)
+        CombatManager.Settings.IsActive = Value
+    end,
+})
+
+CombatTab:CreateSlider({
+    Name = "Attack Range",
+    Range = {5, 50},
+    Increment = 1,
+    CurrentValue = CombatManager.Settings.AttackRange,
+    Callback = function(Value)
+        CombatManager.Settings.AttackRange = Value
+    end,
+})
+
+CombatTab:CreateSlider({
+    Name = "Attack Speed",
+    Range = {0.05, 0.5},
+    Increment = 0.01,
+    CurrentValue = CombatManager.Settings.AttackInterval,
+    Callback = function(Value)
+        CombatManager.Settings.AttackInterval = Value
+    end,
+})
+
+CombatTab:CreateToggle({
+    Name = "Team Check",
+    CurrentValue = CombatManager.Settings.FilterTeams,
+    Callback = function(Value)
+        CombatManager.Settings.FilterTeams = Value
+    end,
+})
+
+local Section = CombatTab:CreateSection("Hitbox Expander")
 
 --// SERVICES
 local Players = game:GetService("Players")
@@ -87,7 +237,7 @@ player:GetPropertyChangedSignal("Team"):Connect(function()
     end
 end)
 
-HitboxTab:CreateToggle({
+CombatTab:CreateToggle({
    Name = "Enable Hitbox Expander",
    CurrentValue = false,
    Callback = function(Value)
@@ -102,7 +252,7 @@ HitboxTab:CreateToggle({
    end
 })
 
-HitboxTab:CreateSlider({
+CombatTab:CreateSlider({
    Name = "Hitbox Size",
    Range = {2, 20},
    Increment = 1,
@@ -116,7 +266,7 @@ HitboxTab:CreateSlider({
    end
 })
 
-HitboxTab:CreateSlider({
+CombatTab:CreateSlider({
    Name = "Transparency",
    Range = {0.3, 1},
    Increment = 0.01,
@@ -834,7 +984,7 @@ MoveTab:CreateToggle({
 
 
 Rayfield:Notify({
-   Title = "Executed v0.01 pal!",
+   Title = "Executed v0.02 pal!",
    Content = "Now enjoy gng :3",
    Duration = 6.5,
    Image = 4483362458,
